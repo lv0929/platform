@@ -1,0 +1,34 @@
+name: Deploy LedgerView
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend dependencies
+        working-directory: ./ledgerview-backend
+        run: npm install
+      - name: Run backend tests
+        working-directory: ./ledgerview-backend
+        run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t ledgerview:${{ github.sha }} .
+      - name: Deploy to hosting target
+        run: |
+          echo "Add your deployment step here, for example: docker push ... or ssh deploy ..."
+          echo "Production deployment requires a valid target server and secret configuration."

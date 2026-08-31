@@ -1,0 +1,3320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LedgerView — Market Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#090c18;
+  --bg-elev:#0e132a;
+  --card:#131a38;
+  --card-hi:#1a2246;
+  --rule-brass:#3d4a8a;
+  --rule-hair:rgba(108,127,255,0.18);
+  --ink:#dbe0f7;
+  --ink-dim:#96a0cf;
+  --ink-faint:#5b6490;
+  --brass:#6c7fff;
+  --brass-soft:#4b58b8;
+  --bull:#22c58e;
+  --bull-soft:rgba(34,197,142,0.14);
+  --bear:#ff5c62;
+  --bear-soft:rgba(255,92,98,0.14);
+  --neutral:#f5b942;
+  --neutral-soft:rgba(245,185,66,0.14);
+  --paper:#f2f4ff;
+  --font-display:'Fraunces', serif;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-sans:'IBM Plex Sans', sans-serif;
+  --sidebar-w:248px;
+  --radius:14px;
+}
+html[data-theme="light"]{
+  --bg:#f4f5fb;
+  --bg-elev:#ffffff;
+  --card:#ffffff;
+  --card-hi:#eef0fb;
+  --rule-brass:#b7bde8;
+  --rule-hair:rgba(76,90,190,0.16);
+  --ink:#1c2140;
+  --ink-dim:#565f8f;
+  --ink-faint:#8d94bd;
+  --brass:#4b58d8;
+  --brass-soft:#a7addf;
+  --bull:#0f9d68;
+  --bull-soft:rgba(15,157,104,0.12);
+  --bear:#e0393f;
+  --bear-soft:rgba(224,57,63,0.10);
+  --neutral:#b8790f;
+  --neutral-soft:rgba(184,121,15,0.12);
+  --paper:#12142c;
+}
+html[data-theme="light"] body{box-shadow:none;}
+html[data-theme="light"] .avatar-lg,
+html[data-theme="light"] .bn-item.center .bn-ico,
+html[data-theme="light"] .avatar{
+  background:linear-gradient(135deg,#4b58d8,#7c86ea);
+  color:#fff;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;overflow-x:hidden;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-sans);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  max-width:100vw;
+}
+*{min-width:0;}
+::selection{background:var(--brass);color:var(--bg);}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:var(--bg-elev);}
+::-webkit-scrollbar-thumb{background:var(--rule-brass);border-radius:0;opacity:.4;}
+
+/* ============ layout shell ============ */
+.app{display:flex;min-height:100vh;}
+
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  background:var(--bg-elev);
+  border-right:1px solid var(--rule-hair);
+  padding:28px 0 20px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+}
+.sidebar::after{
+  content:"";
+  position:absolute;top:0;right:-1px;bottom:0;width:1px;
+  background:repeating-linear-gradient(to bottom, var(--rule-brass) 0 4px, transparent 4px 9px);
+  opacity:.5;
+}
+.brand{
+  display:flex;align-items:baseline;gap:8px;
+  padding:0 24px 26px;
+  border-bottom:1px solid var(--rule-hair);
+  margin-bottom:6px;
+}
+.brand-mark{
+  font-family:var(--font-display);
+  font-weight:600;
+  font-size:22px;
+  letter-spacing:.2px;
+  color:var(--paper);
+}
+.brand-mark span{color:var(--brass);}
+.brand-sub{
+  font-family:var(--font-mono);
+  font-size:9.5px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  display:block;
+  margin-top:2px;
+}
+.nav-group{padding:14px 12px;}
+.nav-label{
+  font-family:var(--font-mono);
+  font-size:10px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  padding:6px 12px 8px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:9px 12px;
+  border-radius:10px;
+  font-size:14px;
+  color:var(--ink-dim);
+  position:relative;
+  transition:background .15s, color .15s;
+}
+.nav-item .num{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  color:var(--ink-faint);
+  width:16px;
+}
+.nav-item:hover{background:var(--card);color:var(--ink);}
+.nav-item.active{
+  background:var(--card-hi);
+  color:var(--paper);
+}
+.nav-item.active .num{color:var(--brass);}
+.nav-item.active::before{
+  content:"";
+  position:absolute;left:0;top:8%;bottom:8%;width:2px;
+  background:var(--brass);
+}
+.sidebar-foot{
+  margin-top:auto;
+  padding:16px 24px 4px;
+  border-top:1px solid var(--rule-hair);
+  font-family:var(--font-mono);
+  font-size:10px;
+  color:var(--ink-faint);
+  line-height:1.6;
+}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+
+/* header */
+.topbar{
+  display:flex;align-items:center;gap:18px;
+  padding:16px 28px;
+  border-bottom:1px solid var(--rule-hair);
+  background:var(--bg);
+  position:sticky;top:0;z-index:30;
+}
+.search-wrap{
+  flex:1;max-width:480px;
+  position:relative;
+}
+.search-wrap input{
+  width:100%;
+  background:var(--bg-elev);
+  border:1px solid var(--rule-hair);
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:13.5px;
+  padding:9px 14px 9px 34px;
+  border-radius:22px;
+  outline:none;
+}
+.search-wrap input:focus{border-color:var(--brass-soft);}
+.search-wrap .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-size:14px;}
+.topbar-actions{display:flex;align-items:center;gap:10px;margin-left:auto;}
+.icon-btn{
+  width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg-elev);
+  border:1px solid var(--rule-hair);
+  border-radius:50%;
+  color:var(--ink-dim);
+  font-size:15px;
+  position:relative;
+}
+.icon-btn:hover{color:var(--paper);border-color:var(--brass-soft);}
+.mobile-search-btn{display:none;}
+@media (max-width:900px){.mobile-search-btn{display:flex;}}
+.dot-badge{
+  position:absolute;top:-4px;right:-4px;
+  background:var(--brass);color:var(--bg);
+  font-family:var(--font-mono);font-size:9px;font-weight:600;
+  min-width:15px;height:15px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 3px;
+}
+.profile-chip{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 12px 5px 5px;
+  background:var(--bg-elev);border:1px solid var(--rule-hair);border-radius:22px;
+}
+.avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brass),#6e5c22);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--bg);
+}
+.profile-chip .pname{font-size:12.5px;color:var(--ink-dim);}
+
+/* ticker */
+.ticker-outer{
+  display:block;
+  border-bottom:1px solid var(--rule-hair);
+  background:var(--bg-elev);
+  overflow:hidden;
+  position:relative;
+  padding-right:150px; /* reserve room for the absolutely-positioned status badge */
+}
+.ticker{
+  display:flex;gap:0;
+  white-space:nowrap;
+  width:max-content;
+  animation:ticker-scroll 28s linear infinite;
+}
+.ticker-outer:hover .ticker{animation-play-state:paused;}
+@keyframes ticker-scroll{
+  from{transform:translateX(0);}
+  to{transform:translateX(-50%);}
+}
+.ticker-item{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 22px;
+  border-right:1px solid var(--rule-hair);
+  white-space:nowrap;
+  font-family:var(--font-mono);
+  font-size:12px;
+  flex-shrink:0;
+}
+.ticker-item .tname{color:var(--ink-dim);letter-spacing:.5px;}
+.ticker-item .tval{color:var(--paper);font-weight:600;}
+.ticker-item .tchg{display:inline-flex;align-items:center;gap:2px;}
+.ticker-item .tchg.up{color:var(--bull);}
+.ticker-item .tchg.down{color:var(--bear);}
+.ticker-item .arrow{font-size:9px;}
+.mstatus{
+  position:absolute;top:0;right:0;bottom:0;
+  display:flex;align-items:center;gap:7px;
+  padding:9px 20px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);
+  background:var(--bg-elev);
+  border-left:1px solid var(--rule-hair);
+  z-index:5;
+  box-shadow:-14px 0 14px -6px var(--bg-elev);
+}
+.mstatus .pulse{width:6px;height:6px;border-radius:50%;background:var(--bull);box-shadow:0 0 0 3px var(--bull-soft);flex-shrink:0;}
+.mstatus .pulse.closed{background:var(--ink-faint);box-shadow:none;}
+
+/* content */
+.content{padding:26px 30px 80px;max-width:1180px;}
+.page-head{margin-bottom:22px;}
+.eyebrow{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--brass);margin-bottom:8px;
+}
+.page-title{
+  font-family:var(--font-display);font-size:30px;font-weight:600;color:var(--paper);
+  letter-spacing:.2px;
+}
+.page-desc{color:var(--ink-dim);font-size:13.5px;margin-top:6px;max-width:640px;line-height:1.55;}
+
+/* ledger rule divider */
+.hr-brass{height:1px;background:linear-gradient(to right,var(--rule-brass),transparent 85%);margin:18px 0;opacity:.55;}
+.hr-double{border-top:2px solid var(--rule-brass);border-bottom:1px solid var(--rule-hair);margin:0 0 2px;opacity:.7;}
+
+/* section headers */
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;margin:34px 0 14px;}
+.sec-head:first-child{margin-top:0;}
+.sec-title{
+  font-family:var(--font-display);font-size:18px;font-weight:600;color:var(--paper);
+  display:flex;align-items:center;gap:10px;
+}
+.sec-title .folio{font-family:var(--font-mono);font-size:11px;color:var(--brass);font-weight:500;}
+.sec-link{font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;color:var(--ink-faint);}
+.sec-link:hover{color:var(--brass);}
+
+/* cards / grids */
+.grid{display:grid;gap:14px;}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-5{grid-template-columns:repeat(5,1fr);}
+@media (max-width:980px){.grid-4,.grid-5{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:640px){.grid-2,.grid-3,.grid-4,.grid-5{grid-template-columns:1fr;}}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--rule-hair);
+  border-radius:var(--radius);
+  padding:16px;
+  position:relative;
+  overflow:hidden;
+}
+.card.hoverable:hover{border-color:var(--brass-soft);background:var(--card-hi);}
+
+.stat-card .stat-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-faint);}
+.stat-card .stat-value{font-family:var(--font-display);font-size:24px;color:var(--paper);margin-top:7px;font-weight:600;}
+.stat-card .stat-chg{font-family:var(--font-mono);font-size:12px;margin-top:5px;}
+.up{color:var(--bull);}
+.down{color:var(--bear);}
+.neu{color:var(--neutral);}
+
+/* ledger table */
+.ledger{width:100%;border-collapse:collapse;font-size:13px;}
+.ledger thead th{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink-faint);text-align:left;padding:0 10px 9px;font-weight:500;
+  border-bottom:2px solid var(--rule-brass);
+}
+.ledger thead th:first-child{padding-left:6px;}
+.ledger tbody td{
+  padding:11px 10px;border-bottom:1px solid var(--rule-hair);
+  font-family:var(--font-mono);font-size:12.5px;color:var(--ink);
+}
+.ledger tbody td:first-child{padding-left:6px;}
+.ledger tbody tr:hover{background:var(--card-hi);}
+.ledger{border-radius:var(--radius);overflow:hidden;}
+.ledger .row-idx{color:var(--ink-faint);font-size:11px;}
+.sym-cell{font-family:var(--font-sans);font-weight:600;color:var(--paper);}
+.sym-sub{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);display:block;}
+
+/* stamp badge (signature element) */
+.stamp{
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:10.5px;font-weight:600;letter-spacing:1px;
+  padding:4px 12px;border-radius:20px;border:1.5px solid currentColor;
+}
+.stamp.buy{color:var(--bull);}
+.stamp.sell{color:var(--bear);}
+.stamp.hold{color:var(--neutral);}
+
+.pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font-mono);font-size:10.5px;padding:4px 10px;border-radius:14px;
+  background:var(--bg-elev);border:1px solid var(--rule-hair);color:var(--ink-dim);
+}
+
+/* tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule-hair);margin-bottom:18px;overflow-x:auto;}
+.tab-btn{
+  padding:10px 16px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.5px;
+  color:var(--ink-faint);border-bottom:2px solid transparent;white-space:nowrap;
+}
+.tab-btn:hover{color:var(--ink);}
+.tab-btn.active{color:var(--brass);border-bottom-color:var(--brass);}
+
+/* filter chips */
+.chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.chip{
+  padding:6px 13px;font-family:var(--font-mono);font-size:11px;
+  border:1px solid var(--rule-hair);border-radius:20px;color:var(--ink-dim);
+  background:var(--bg-elev);
+}
+.chip:hover{border-color:var(--brass-soft);color:var(--ink);}
+.chip.active{background:var(--brass);color:var(--bg);border-color:var(--brass);font-weight:600;}
+
+/* bottom nav (mobile) */
+.bottomnav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--bg-elev);border-top:1px solid var(--rule-hair);
+  z-index:40;
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+.bottomnav-inner{display:flex;justify-content:space-around;}
+.bn-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 4px;color:var(--ink-faint);font-size:9.5px;font-family:var(--font-mono);
+  flex:1;
+}
+.bn-item .bn-ico{font-size:17px;}
+.bn-item.active{color:var(--brass);}
+.bn-item.center{margin-top:-22px;}
+.bn-item.center .bn-ico{
+  width:46px;height:46px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brass),#2c3577);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:19px;box-shadow:0 4px 14px rgba(0,0,0,.4);
+}
+
+/* more sheet */
+.more-sheet{
+  display:none;position:fixed;inset:0;z-index:50;background:rgba(5,14,11,.72);
+  align-items:flex-end;
+}
+.more-sheet.open{display:flex;}
+.more-panel{
+  background:var(--bg-elev);border-top:1px solid var(--rule-brass);width:100%;
+  padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+  max-height:75vh;overflow-y:auto;
+}
+.more-panel h3{font-family:var(--font-display);color:var(--paper);font-size:16px;margin-bottom:14px;}
+.more-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.more-grid a{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:14px 6px;background:var(--card);border:1px solid var(--rule-hair);border-radius:3px;
+  font-size:11px;color:var(--ink-dim);text-align:center;
+}
+.more-close{display:block;text-align:center;padding:12px;margin-top:12px;color:var(--ink-faint);font-family:var(--font-mono);font-size:11px;}
+
+/* responsive */
+@media (max-width:900px){
+  .sidebar{display:none;}
+  .content{padding:18px 16px 96px;}
+  .topbar{padding:12px 14px;}
+  .bottomnav{display:block;}
+  .page-title{font-size:24px;}
+  #topSearchWrap{display:none;}
+  .quicktabs{padding:0 14px;}
+}
+@media (max-width:480px){
+  .topbar{gap:8px;flex-wrap:wrap;row-gap:8px;}
+  .topbar-actions{gap:5px;}
+  .icon-btn{width:31px;height:31px;font-size:13px;flex-shrink:0;}
+  .greet-block{gap:8px;min-width:0;}
+  .avatar-lg{width:34px;height:34px;font-size:12px;flex-shrink:0;}
+  .greet-text{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw;}
+  .greet-rule{width:36px;}
+  .page-title{font-size:20px;}
+  .idx-card{min-width:132px;padding:12px;}
+  .ai-input-row{flex-direction:column;}
+  .ai-generate-btn{width:100%;padding:11px;}
+  .chart-legend{flex-wrap:wrap;row-gap:4px;}
+  .stat-card .stat-value{font-size:16px;}
+  .ticker-outer{padding-right:0;}
+  .mstatus{position:static;box-shadow:none;border-top:1px solid var(--rule-hair);border-left:none;width:100%;justify-content:center;}
+}
+@media (max-width:400px){
+  .icon-btn{width:29px;height:29px;font-size:12px;}
+  .topbar-actions{gap:4px;}
+  .greet-text{max-width:26vw;}
+  #oiQuickBtn{display:none;} /* reachable via More menu on very narrow screens */
+  .country-select{width:92px;font-size:11px;padding:12px 6px;}
+  .phone-input{font-size:14px;padding:12px 10px;}
+  .auth-card{padding:26px 18px;}
+  .mini-row .vol-bar{display:none;}
+}
+
+/* market snapshot (promo dashboard section) */
+.breadth-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--bg-elev);}
+.breadth-bar .adv{background:var(--bull);}
+.breadth-bar .unc{background:var(--ink-faint);}
+.breadth-bar .dec{background:var(--bear);}
+.breadth-nums{display:flex;justify-content:space-between;margin-top:8px;font-family:var(--font-mono);font-size:12.5px;}
+.breadth-nums .adv-n{color:var(--bull);}
+.breadth-nums .dec-n{color:var(--bear);}
+.breadth-nums .unc-n{color:var(--ink-faint);}
+.mini-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--rule-hair);cursor:pointer;gap:10px;}
+.mini-row:last-child{border-bottom:none;}
+.mini-row .mr-sym{font-size:13px;color:var(--paper);font-weight:600;}
+.mini-row .mr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.mini-row .mr-price{font-family:var(--font-mono);font-size:12.5px;}
+.vol-bar{width:46px;height:5px;border-radius:3px;background:var(--bg-elev);overflow:hidden;flex-shrink:0;}
+.vol-bar > div{height:100%;background:var(--bull);}
+.fo-snap-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--rule-hair);font-size:13px;}
+.fo-snap-row:last-child{border-bottom:none;}
+.fo-snap-row .fs-val{font-family:var(--font-mono);}
+/* ===================== auth screen ===================== */
+.auth-screen{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  overflow-y:auto;
+}
+.auth-card{
+  width:100%;max-width:400px;
+  background:var(--card);border:1px solid var(--rule-hair);border-radius:18px;
+  padding:32px 26px;
+  margin:auto;
+}
+.auth-brand{text-align:center;margin-bottom:28px;}
+.auth-brand .brand-sub{
+  font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--ink-faint);display:block;margin-top:4px;
+}
+.auth-title{font-family:var(--font-display);font-size:21px;font-weight:600;color:var(--paper);margin-bottom:6px;}
+.auth-sub{font-size:12.5px;color:var(--ink-dim);line-height:1.5;margin-bottom:20px;}
+.phone-row{display:flex;gap:8px;margin-bottom:6px;}
+.country-select{
+  flex-shrink:0;width:112px;background:var(--bg-elev);border:1px solid var(--rule-hair);border-radius:10px;
+  color:var(--ink);font-family:var(--font-mono);font-size:12.5px;padding:12px 8px;outline:none;
+}
+.phone-input{
+  flex:1;min-width:0;background:var(--bg-elev);border:1px solid var(--rule-hair);border-radius:10px;
+  color:var(--ink);font-family:var(--font-mono);font-size:15px;padding:12px 14px;outline:none;
+}
+.phone-input:focus, .country-select:focus{border-color:var(--brass-soft);}
+.auth-error{color:var(--bear);font-size:12px;font-family:var(--font-mono);min-height:16px;margin:8px 0 4px;}
+.auth-submit{
+  width:100%;background:var(--brass);color:var(--bg);border:none;border-radius:10px;
+  padding:13px;font-family:var(--font-sans);font-weight:700;font-size:14px;margin-top:14px;cursor:pointer;
+}
+.auth-back{
+  width:100%;background:none;border:none;color:var(--ink-faint);font-family:var(--font-mono);font-size:11.5px;
+  padding:12px;cursor:pointer;
+}
+.auth-note{
+  font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);line-height:1.6;
+  margin-top:16px;border-top:1px solid var(--rule-hair);padding-top:14px;
+}
+
+.split{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;}
+@media (max-width:900px){.split{grid-template-columns:1fr;}}
+
+.list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--rule-hair);}
+.list-row:last-child{border-bottom:none;}
+.link-row{cursor:pointer;color:inherit;}
+.link-row:hover{color:var(--brass);}
+.link-row .link-val{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);overflow-wrap:anywhere;text-align:right;}
+.link-row:hover .link-val{color:var(--brass);}
+
+.badge-score{
+  width:38px;height:38px;border-radius:50%;
+  border:2px solid var(--brass);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--brass);
+  flex-shrink:0;
+}
+
+.progressbar{height:5px;background:var(--bg-elev);border-radius:3px;overflow:hidden;}
+.progressbar > div{height:100%;background:var(--brass);}
+
+.news-card{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--rule-hair);}
+.news-card:last-child{border-bottom:none;}
+.news-thumb{width:64px;height:64px;flex-shrink:0;background:var(--bg-elev);border:1px solid var(--rule-hair);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ink-faint);}
+.news-meta{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);margin-bottom:4px;}
+.news-title{font-size:13.5px;color:var(--ink);line-height:1.4;}
+
+.assistant-fab{
+  position:fixed;right:26px;bottom:26px;z-index:35;
+  width:56px;height:56px;border-radius:50%;
+  background:var(--brass);color:var(--bg);
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  border:none;box-shadow:0 6px 18px rgba(0,0,0,.4);
+}
+@media (max-width:900px){.assistant-fab{bottom:78px;right:16px;width:50px;height:50px;}}
+
+.chip-inline{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:2px;background:var(--bg-elev);border:1px solid var(--rule-hair);color:var(--ink-faint);}
+
+.empty{padding:40px 20px;text-align:center;color:var(--ink-faint);font-family:var(--font-mono);font-size:12px;}
+
+.chart-card{cursor:pointer;transition:border-color .15s;}
+.chart-card:hover{border-color:var(--brass-soft);}
+.chart-card .expand-hint{
+  position:absolute;top:12px;right:14px;
+  font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);
+  display:flex;align-items:center;gap:5px;
+}
+
+.chart-modal{
+  display:none;position:fixed;inset:0;z-index:60;
+  background:rgba(4,6,16,.78);
+  align-items:center;justify-content:center;
+  padding:20px;
+}
+.chart-modal.open{display:flex;}
+.chart-modal-panel{
+  background:var(--bg-elev);border:1px solid var(--rule-hair);border-radius:18px;
+  width:100%;max-width:760px;max-height:85vh;overflow-y:auto;
+  padding:22px;
+}
+.chart-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.chart-modal-head .title{font-family:var(--font-display);font-size:20px;color:var(--paper);}
+.chart-modal-close{
+  width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--rule-hair);
+  color:var(--ink-dim);display:flex;align-items:center;justify-content:center;font-size:15px;
+}
+.chart-modal-big{
+  height:320px;border-radius:14px;background:var(--card);border:1px solid var(--rule-hair);
+  display:flex;align-items:center;justify-content:center;color:var(--ink-faint);
+  font-family:var(--font-mono);font-size:12px;
+  flex-direction:column;padding:0;overflow:hidden;
+}
+.chart-canvas-wrap{width:100%;height:100%;display:flex;flex-direction:column;}
+.chart-price-canvas{flex:1;width:100%;display:block;}
+.chart-vol-canvas{height:54px;width:100%;display:block;}
+.chart-rsi-canvas{height:70px;width:100%;display:block;}
+.chart-legend{
+  display:flex;gap:16px;padding:8px 12px;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);
+  border-top:1px solid var(--rule-hair);flex-shrink:0;
+}
+.chart-legend span{display:flex;align-items:center;gap:5px;}
+.chart-legend .sw{width:10px;height:2px;display:inline-block;}
+.chart-inline-wrap{height:260px;}
+
+/* header greeting (reference-style) */
+.greet-block{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.avatar-lg{
+  width:42px;height:42px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brass),#2c3577);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:14px;font-weight:600;color:#fff;
+  box-shadow:0 0 0 2px var(--bg), 0 0 0 3.5px var(--brass-soft);
+}
+.greet-text{font-size:15px;color:var(--ink-dim);}
+.greet-text b{color:var(--paper);font-family:var(--font-display);font-weight:600;}
+.greet-rule{width:56px;height:2px;background:var(--brass);margin-top:4px;border-radius:2px;}
+
+.quicktabs{
+  display:flex;gap:26px;padding:0 28px;border-bottom:1px solid var(--rule-hair);
+  overflow-x:auto;
+}
+.quicktabs::-webkit-scrollbar{display:none;}
+.qt-item{
+  padding:12px 2px 10px;font-size:14.5px;color:var(--ink-faint);white-space:nowrap;
+  border-bottom:2px solid transparent;flex-shrink:0;
+}
+.qt-item.active{color:var(--paper);font-weight:600;border-bottom-color:var(--brass);}
+
+/* index summary cards (reference-style) */
+.idx-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:2px;}
+.idx-row::-webkit-scrollbar{display:none;}
+.idx-card{
+  flex:1;min-width:150px;background:var(--card);border:1px solid var(--rule-hair);border-radius:var(--radius);
+  padding:14px 16px;cursor:pointer;transition:border-color .15s;
+}
+.idx-card:hover{border-color:var(--brass-soft);}
+.idx-card .idx-name{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink-dim);}
+.idx-card .idx-val{font-family:var(--font-display);font-size:19px;color:var(--paper);margin-top:6px;}
+.idx-card .idx-chg{font-family:var(--font-mono);font-size:11.5px;margin-top:3px;}
+.status-dot-row{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-bottom:10px;}
+.status-dot-row .dot{width:6px;height:6px;border-radius:50%;background:var(--ink-faint);}
+.status-dot-row .dot.live{background:var(--bull);box-shadow:0 0 0 3px var(--bull-soft);}
+
+/* segmented summary card */
+.seg-tabs{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;}
+.seg-tab{
+  padding:7px 16px;border-radius:16px;font-size:12.5px;color:var(--ink-dim);
+  border:1px solid var(--rule-hair);background:var(--bg-elev);flex-shrink:0;
+}
+.seg-tab.active{background:transparent;border-color:var(--bull);color:var(--bull);}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;}
+@media (max-width:420px){.summary-grid{grid-template-columns:1fr;}.icon-grid{grid-template-columns:repeat(2,1fr);}}
+
+/* colorful icon grid (reference-style) */
+.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+@media (max-width:640px){.icon-grid{grid-template-columns:repeat(4,1fr);}}
+.icon-grid a{
+  display:flex;flex-direction:column;align-items:center;gap:9px;
+  padding:10px 4px;text-align:center;font-size:12px;color:var(--ink-dim);
+}
+.icon-badge{
+  width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:22px;
+}
+
+/* news sentiment badge */
+.sent-badge{
+  width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;
+}
+.sent-badge.pos{background:var(--bull-soft);}
+.sent-badge.neg{background:var(--bear-soft);}
+.sent-badge.neu{background:var(--bg-elev);border:1px solid var(--rule-hair);}
+.ai-banner{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;
+  background:var(--bg-elev);border:1px solid var(--rule-hair);font-size:12.5px;color:var(--ink-dim);margin-bottom:14px;
+}
+.ai-chip{
+  font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.5px;
+  color:var(--brass);border:1px solid var(--brass-soft);padding:2px 7px;border-radius:6px;
+}
+
+/* option contract row (reference-style) */
+.opt-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 0;border-bottom:1px solid var(--rule-hair);}
+.opt-row:last-child{border-bottom:none;}
+.opt-row .opt-name{font-size:14px;color:var(--paper);}
+.opt-row .opt-ex{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);margin-top:3px;}
+.opt-row .opt-price{font-family:var(--font-mono);font-size:15px;color:var(--paper);text-align:right;white-space:nowrap;}
+.opt-row .opt-chg{font-family:var(--font-mono);font-size:11.5px;text-align:right;margin-top:3px;white-space:nowrap;}
+
+/* derivatives / screener tool cards (intradayscreener-inspired) */
+.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:640px){.tool-grid{grid-template-columns:1fr;}}
+.tool-card{
+  display:flex;align-items:center;gap:12px;padding:14px;
+  background:var(--card);border:1px solid var(--rule-hair);border-radius:var(--radius);
+  cursor:pointer;
+}
+.tool-card:hover{border-color:var(--brass-soft);background:var(--card-hi);}
+.tool-card .tool-ico{font-size:20px;}
+.tool-card .tool-name{font-size:13.5px;color:var(--paper);flex:1;}
+.pro-badge{
+  font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.5px;
+  background:var(--bull-soft);color:var(--bull);padding:3px 8px;border-radius:10px;
+}
+.broker-row{display:flex;flex-wrap:wrap;gap:10px;}
+.broker-chip{
+  padding:10px 18px;border-radius:14px;border:1px solid var(--rule-hair);background:var(--bg-elev);
+  font-size:13px;color:var(--ink-dim);cursor:pointer;transition:border-color .15s,color .15s;
+}
+.broker-chip:hover{border-color:var(--brass-soft);color:var(--paper);}
+
+.social-row{display:flex;align-items:center;gap:10px;}
+.social-badge{
+  width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-family:var(--font-sans);font-weight:700;color:#fff;flex-shrink:0;
+}
+.social-badge svg{display:block;}
+.social-badge.mail{background:linear-gradient(135deg,#e6b845,#8f6a12);}
+.social-badge.insta{background:radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);}
+.social-badge.linkedin{background:#0a66c2;}
+.ai-scan-box{
+  background:var(--card);border:1px solid var(--brass-soft);border-radius:var(--radius);padding:18px;
+}
+.ai-magic-label{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;color:var(--brass);margin-bottom:12px;}
+.ai-magic-label .dot{width:7px;height:7px;border-radius:50%;background:var(--brass);}
+.ai-input-row{display:flex;gap:8px;margin-bottom:12px;}
+.ai-input-row input{flex:1;background:var(--bg-elev);border:1px solid var(--rule-hair);border-radius:10px;padding:11px 14px;color:var(--ink);font-family:var(--font-sans);font-size:13.5px;outline:none;}
+.ai-generate-btn{background:var(--bull);color:#06231a;border:none;border-radius:10px;padding:0 16px;font-family:var(--font-sans);font-weight:600;font-size:13px;white-space:nowrap;}
+.ai-condition-box{background:var(--bull-soft);border:1px solid var(--bull);border-radius:10px;padding:12px 14px;font-family:var(--font-mono);color:var(--bull);font-size:14px;margin-bottom:14px;}
+.ai-action-row{display:flex;flex-wrap:wrap;gap:10px;}
+.ai-action-btn{
+  padding:10px 16px;border-radius:10px;font-size:13px;border:1px solid var(--rule-hair);background:var(--bg-elev);color:var(--ink-dim);
+  display:flex;align-items:center;gap:7px;
+}
+.ai-action-btn.primary{background:var(--bull);color:#06231a;border:none;font-weight:600;}
+
+.section-note{
+  font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);
+  border-left:2px solid var(--brass-soft);padding:8px 12px;background:var(--bg-elev);margin-top:16px;line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="brand-mark">Ledger<span>View</span></div>
+      <span class="brand-sub">Market Intelligence</span>
+    </div>
+
+    <div id="authStep1">
+      <div class="auth-title">Log in or sign up</div>
+      <div class="auth-sub">Enter your phone number. We'll verify it with a one-time code.</div>
+      <div class="phone-row">
+        <select id="countrySelect" class="country-select"></select>
+        <input id="phoneInput" class="phone-input" type="tel" placeholder="98765 43210" inputmode="numeric">
+      </div>
+      <div id="authError1" class="auth-error"></div>
+      <button class="auth-submit" onclick="authSendOtp()">Send OTP</button>
+      <div class="auth-note">Prototype flow — no real SMS is sent; any 6-digit code will be accepted on the next screen.</div>
+    </div>
+
+    <div id="authStep2" style="display:none;">
+      <div class="auth-title">Enter the code</div>
+      <div class="auth-sub" id="authOtpSub">We've "sent" a 6-digit code to your number.</div>
+      <input id="otpInput" class="phone-input" style="width:100%;text-align:center;letter-spacing:6px;font-size:20px;" maxlength="6" inputmode="numeric" placeholder="——————">
+      <div id="authError2" class="auth-error"></div>
+      <button class="auth-submit" onclick="authVerifyOtp()">Verify &amp; Continue</button>
+      <button class="auth-back" onclick="authGoToStep(1)">← Change number</button>
+    </div>
+
+    <div id="authStep3" style="display:none;">
+      <div class="auth-title">What should we call you?</div>
+      <div class="auth-sub">Just for your profile — no password needed for this prototype.</div>
+      <input id="nameInput" class="phone-input" style="width:100%;" placeholder="Your name">
+      <div id="authError3" class="auth-error"></div>
+      <button class="auth-submit" onclick="authCompleteProfile()">Enter LedgerView</button>
+    </div>
+  </div>
+</div>
+
+<div id="mainShell" style="display:none;">
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div>
+        <div class="brand-mark">Ledger<span>View</span></div>
+        <span class="brand-sub">Market Intelligence</span>
+      </div>
+    </div>
+    <nav class="nav-group" id="sidebarNav"></nav>
+    <div class="sidebar-foot">
+      DATA → ANALYSIS →<br>RESEARCH → ACTION<br><br>
+      SEBI Reg. — see Legal
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="greet-block">
+        <div class="avatar-lg">RA</div>
+        <div>
+          <div class="greet-text" id="greetText">Hello <b>Rohan</b></div>
+          <div class="greet-rule"></div>
+        </div>
+      </div>
+      <div class="search-wrap" id="topSearchWrap">
+        <span class="ico">⌕</span>
+        <input id="globalSearch" type="text" placeholder="Search stocks, F&O, news, research…">
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="oiQuickBtn" title="One-click OI / Option Chain" onclick="navigate('optionchain')">⌗</button>
+        <button class="icon-btn" title="भाषा / Language" onclick="toggleLang()" id="langBtn" style="font-family:var(--font-mono);font-size:11px;font-weight:600;">EN</button>
+        <button class="icon-btn" title="Toggle theme" onclick="toggleTheme()" id="themeBtn">🌙</button>
+        <button class="icon-btn mobile-search-btn" title="Search" onclick="navigate('search')">⌕</button>
+        <button class="icon-btn" title="More" onclick="openMore()">▥</button>
+        <button class="icon-btn" title="Alerts & Notifications" onclick="toggleNotif()">🔔</button>
+        <button class="icon-btn" title="LedgerView Intelligence" onclick="navigate('intelligence')">✦</button>
+      </div>
+    </header>
+
+    <nav class="quicktabs" id="quickTabs"></nav>
+
+
+    <div class="ticker-outer">
+      <div class="ticker" id="tickerRow"></div>
+      <div class="mstatus" id="mstatusRow"><span class="pulse" id="mstatusPulse"></span><span id="mstatusText">Market Open · 09:15–15:30 IST</span></div>
+    </div>
+
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<button class="assistant-fab" title="LedgerView Intelligence" onclick="navigate('intelligence')">✦</button>
+
+<nav class="bottomnav">
+  <div class="bottomnav-inner" id="bottomNavInner"></div>
+</nav>
+
+<div class="chart-modal" id="chartModal">
+  <div class="chart-modal-panel">
+    <div class="chart-modal-head">
+      <div class="title" id="chartModalTitle">Chart</div>
+      <button class="chart-modal-close" onclick="closeChartModal()">✕</button>
+    </div>
+    <div class="tabs" id="chartModalTabs"></div>
+    <div class="chart-modal-big" id="chartModalBody">interactive price chart</div>
+  </div>
+</div>
+
+<div class="more-sheet" id="moreSheet">
+  <div class="more-panel">
+    <h3>More</h3>
+    <div class="more-grid" id="moreGrid"></div>
+    <a href="javascript:void(0)" class="more-close" onclick="closeMore();return false;">Close</a>
+  </div>
+</div>
+</div>
+
+<script>
+// ===================== LEDGERVIEW MOCK DATA =====================
+// All figures are illustrative placeholder data for prototype purposes only.
+
+const TICKER = [
+  {name:'NIFTY 50', val:'24,366.00', chg:'-0.12%', dir:'down'},
+  {name:'SENSEX', val:'78,009.25', chg:'-0.09%', dir:'down'},
+  {name:'BANK NIFTY', val:'57,491.10', chg:'-0.25%', dir:'down'},
+  {name:'GIFT NIFTY', val:'24,423.00', chg:'-0.03%', dir:'down'},
+  {name:'DOW JONES', val:'53,757.60', chg:'-0.19%', dir:'down'},
+  {name:'NIKKEI 225', val:'68,713.80', chg:'+0.59%', dir:'up'},
+  {name:'CRUDE OIL', val:'$79.40', chg:'-0.85%', dir:'down'},
+  {name:'GOLD', val:'₹71,240', chg:'+0.38%', dir:'up'},
+  {name:'SILVER', val:'₹84,120', chg:'+0.62%', dir:'up'},
+  {name:'NATURAL GAS', val:'$2.18', chg:'+1.10%', dir:'up'},
+];
+// Instruments where NSE cash-market hours gate live movement (vs. commodities
+// on MCX hours, vs. global instruments that drift lightly around the clock).
+const TICKER_NSE_EQUITY = ['NIFTY 50','SENSEX','BANK NIFTY'];
+const TICKER_COMMODITY = ['CRUDE OIL','GOLD','SILVER','NATURAL GAS'];
+
+const INDICES = [
+  {name:'NIFTY 50', val:'24,366.00', chg:'-29.85', pct:'-0.12%', dir:'down'},
+  {name:'SENSEX', val:'78,009.25', chg:'-70.71', pct:'-0.09%', dir:'down'},
+  {name:'BANK NIFTY', val:'57,491.10', chg:'-144.20', pct:'-0.25%', dir:'down'},
+  {name:'NIFTY MIDCAP 100', val:'57,332.40', chg:'+302.80', pct:'+0.53%', dir:'up'},
+];
+
+const GAINERS = [
+  {sym:'TATAPOWER', ex:'NSE', price:'452.10', chg:'+6.82%'},
+  {sym:'HAL', ex:'NSE', price:'4,812.00', chg:'+5.14%'},
+  {sym:'ADANIENT', ex:'NSE', price:'3,102.55', chg:'+4.47%'},
+  {sym:'DIXON', ex:'NSE', price:'14,220.00', chg:'+3.98%'},
+];
+const LOSERS = [
+  {sym:'ZOMATO', ex:'NSE', price:'218.40', chg:'-4.61%'},
+  {sym:'PAYTM', ex:'NSE', price:'612.30', chg:'-3.85%'},
+  {sym:'IDEA', ex:'NSE', price:'14.28', chg:'-3.20%'},
+  {sym:'PVRINOX', ex:'NSE', price:'1,340.10', chg:'-2.74%'},
+];
+const MOST_ACTIVE = [
+  {sym:'RELIANCE', ex:'NSE', price:'2,984.60', chg:'+1.12%', vol:'18.2M'},
+  {sym:'HDFCBANK', ex:'NSE', price:'1,672.15', chg:'+0.44%', vol:'14.7M'},
+  {sym:'ICICIBANK', ex:'NSE', price:'1,208.90', chg:'-0.31%', vol:'12.1M'},
+  {sym:'INFY', ex:'NSE', price:'1,895.30', chg:'+0.87%', vol:'9.8M'},
+];
+
+const SECTORS = [
+  {name:'IT', pct:'+1.42%', dir:'up'},
+  {name:'Banking', pct:'-0.28%', dir:'down'},
+  {name:'Auto', pct:'+0.95%', dir:'up'},
+  {name:'Pharma', pct:'+0.61%', dir:'up'},
+  {name:'Metal', pct:'-1.10%', dir:'down'},
+  {name:'FMCG', pct:'+0.18%', dir:'up'},
+  {name:'Energy', pct:'-0.44%', dir:'down'},
+  {name:'Realty', pct:'+2.03%', dir:'up'},
+];
+
+const MARKET_PULSE = {
+  fiiFlow:{label:'FII Flow', val:'₹-1,842 Cr', dir:'down'},
+  diiFlow:{label:'DII Flow', val:'₹+2,310 Cr', dir:'up'},
+  advDec:{label:'Advance / Decline', val:'1,684 / 1,092'},
+  vix:{label:'India VIX', val:'13.42', dir:'down'},
+  score:{label:'Market Score', val:'68 / 100', tag:'Moderately Bullish'},
+};
+
+const STOCKS = [
+  // NSE — large caps (NIFTY 50 universe)
+  {sym:'RELIANCE', ex:'NSE', name:'Reliance Industries', cap:'Large Cap', price:'2,984.60', chg:'+1.12%', dir:'up', vol:'18.2M', signal:'BUY', pe:'24.1'},
+  {sym:'HDFCBANK', ex:'NSE', name:'HDFC Bank', cap:'Large Cap', price:'1,672.15', chg:'+0.44%', dir:'up', vol:'14.7M', signal:'BUY', pe:'19.8'},
+  {sym:'ICICIBANK', ex:'NSE', name:'ICICI Bank', cap:'Large Cap', price:'1,320.40', chg:'+0.28%', dir:'up', vol:'11.4M', signal:'BUY', pe:'18.2'},
+  {sym:'TCS', ex:'NSE', name:'Tata Consultancy Services', cap:'Large Cap', price:'3,912.60', chg:'-0.34%', dir:'down', vol:'3.1M', signal:'HOLD', pe:'26.8'},
+  {sym:'INFY', ex:'NSE', name:'Infosys Ltd', cap:'Large Cap', price:'1,895.30', chg:'+0.87%', dir:'up', vol:'9.8M', signal:'HOLD', pe:'27.4'},
+  {sym:'BHARTIARTL', ex:'NSE', name:'Bharti Airtel', cap:'Large Cap', price:'1,952.75', chg:'+0.55%', dir:'up', vol:'6.2M', signal:'BUY', pe:'32.1'},
+  {sym:'SBIN', ex:'NSE', name:'State Bank of India', cap:'Large Cap', price:'882.30', chg:'-0.18%', dir:'down', vol:'12.8M', signal:'HOLD', pe:'10.4'},
+  {sym:'LT', ex:'NSE', name:'Larsen & Toubro', cap:'Large Cap', price:'3,854.20', chg:'+0.61%', dir:'up', vol:'2.4M', signal:'BUY', pe:'29.6'},
+  {sym:'BAJFINANCE', ex:'NSE', name:'Bajaj Finance', cap:'Large Cap', price:'7,812.50', chg:'+1.34%', dir:'up', vol:'1.8M', signal:'BUY', pe:'31.5'},
+  {sym:'HINDUNILVR', ex:'NSE', name:'Hindustan Unilever', cap:'Large Cap', price:'2,648.90', chg:'+0.22%', dir:'up', vol:'2.1M', signal:'HOLD', pe:'52.3'},
+  {sym:'KOTAKBANK', ex:'NSE', name:'Kotak Mahindra Bank', cap:'Large Cap', price:'391.15', chg:'-0.32%', dir:'down', vol:'9.6M', signal:'HOLD', pe:'16.9'},
+  {sym:'AXISBANK', ex:'NSE', name:'Axis Bank', cap:'Large Cap', price:'1,217.40', chg:'-0.36%', dir:'down', vol:'7.9M', signal:'HOLD', pe:'13.1'},
+  {sym:'ITC', ex:'NSE', name:'ITC Ltd', cap:'Large Cap', price:'462.80', chg:'+0.14%', dir:'up', vol:'8.4M', signal:'HOLD', pe:'23.7'},
+  {sym:'SUNPHARMA', ex:'NSE', name:'Sun Pharmaceutical', cap:'Large Cap', price:'1,854.60', chg:'+0.42%', dir:'up', vol:'2.6M', signal:'BUY', pe:'34.8'},
+  {sym:'TITAN', ex:'NSE', name:'Titan Company', cap:'Large Cap', price:'3,612.30', chg:'+0.78%', dir:'up', vol:'1.2M', signal:'BUY', pe:'68.4'},
+  {sym:'MARUTI', ex:'NSE', name:'Maruti Suzuki India', cap:'Large Cap', price:'13,240.00', chg:'-0.21%', dir:'down', vol:'0.4M', signal:'HOLD', pe:'26.2'},
+  {sym:'M&M', ex:'NSE', name:'Mahindra & Mahindra', cap:'Large Cap', price:'3,318.50', chg:'+0.93%', dir:'up', vol:'1.9M', signal:'BUY', pe:'27.9'},
+  {sym:'ASIANPAINT', ex:'NSE', name:'Asian Paints', cap:'Large Cap', price:'2,904.10', chg:'-0.15%', dir:'down', vol:'0.9M', signal:'HOLD', pe:'44.1'},
+  {sym:'ULTRACEMCO', ex:'NSE', name:'UltraTech Cement', cap:'Large Cap', price:'11,486.00', chg:'+0.36%', dir:'up', vol:'0.3M', signal:'BUY', pe:'33.7'},
+  {sym:'HCLTECH', ex:'NSE', name:'HCL Technologies', cap:'Large Cap', price:'1,748.20', chg:'-0.28%', dir:'down', vol:'3.4M', signal:'HOLD', pe:'24.3'},
+  {sym:'WIPRO', ex:'NSE', name:'Wipro Ltd', cap:'Large Cap', price:'291.60', chg:'+0.51%', dir:'up', vol:'8.1M', signal:'HOLD', pe:'21.6'},
+  {sym:'BAJAJFINSV', ex:'NSE', name:'Bajaj Finserv', cap:'Large Cap', price:'1,846.90', chg:'+0.67%', dir:'up', vol:'1.4M', signal:'BUY', pe:'33.2'},
+  {sym:'ADANIENT', ex:'NSE', name:'Adani Enterprises', cap:'Large Cap', price:'3,102.55', chg:'+4.47%', dir:'up', vol:'4.6M', signal:'BUY', pe:'58.6'},
+  {sym:'ADANIPORTS', ex:'NSE', name:'Adani Ports & SEZ', cap:'Large Cap', price:'1,452.80', chg:'+0.44%', dir:'up', vol:'2.2M', signal:'BUY', pe:'27.1'},
+  {sym:'NTPC', ex:'NSE', name:'NTPC Ltd', cap:'Large Cap', price:'362.40', chg:'-0.19%', dir:'down', vol:'6.8M', signal:'HOLD', pe:'15.8'},
+  {sym:'POWERGRID', ex:'NSE', name:'Power Grid Corp', cap:'Large Cap', price:'328.15', chg:'+0.11%', dir:'up', vol:'5.3M', signal:'HOLD', pe:'17.4'},
+  {sym:'ONGC', ex:'NSE', name:'Oil & Natural Gas Corp', cap:'Large Cap', price:'258.90', chg:'-0.62%', dir:'down', vol:'7.1M', signal:'HOLD', pe:'8.9'},
+  {sym:'COALINDIA', ex:'NSE', name:'Coal India', cap:'Large Cap', price:'418.60', chg:'+0.33%', dir:'up', vol:'4.9M', signal:'HOLD', pe:'7.6'},
+  {sym:'TATASTEEL', ex:'NSE', name:'Tata Steel', cap:'Large Cap', price:'164.75', chg:'-0.85%', dir:'down', vol:'19.2M', signal:'HOLD', pe:'42.3'},
+  {sym:'JSWSTEEL', ex:'NSE', name:'JSW Steel', cap:'Large Cap', price:'982.40', chg:'-1.02%', dir:'down', vol:'2.8M', signal:'HOLD', pe:'31.9'},
+  {sym:'CIPLA', ex:'NSE', name:'Cipla Ltd', cap:'Large Cap', price:'1,548.20', chg:'+0.29%', dir:'up', vol:'1.6M', signal:'BUY', pe:'25.4'},
+  {sym:'DRREDDY', ex:'NSE', name:"Dr. Reddy's Labs", cap:'Large Cap', price:'1,248.60', chg:'-0.41%', dir:'down', vol:'1.1M', signal:'HOLD', pe:'19.2'},
+  {sym:'GRASIM', ex:'NSE', name:'Grasim Industries', cap:'Large Cap', price:'2,746.80', chg:'+0.58%', dir:'up', vol:'0.7M', signal:'BUY', pe:'22.6'},
+  {sym:'SBILIFE', ex:'NSE', name:'SBI Life Insurance', cap:'Large Cap', price:'1,752.30', chg:'+0.19%', dir:'up', vol:'0.8M', signal:'HOLD', pe:'68.1'},
+  {sym:'HDFCLIFE', ex:'NSE', name:'HDFC Life Insurance', cap:'Large Cap', price:'698.40', chg:'-0.24%', dir:'down', vol:'2.3M', signal:'HOLD', pe:'75.4'},
+  {sym:'BRITANNIA', ex:'NSE', name:'Britannia Industries', cap:'Large Cap', price:'5,824.60', chg:'+0.37%', dir:'up', vol:'0.3M', signal:'BUY', pe:'54.2'},
+  {sym:'APOLLOHOSP', ex:'NSE', name:'Apollo Hospitals', cap:'Large Cap', price:'7,215.30', chg:'+0.82%', dir:'up', vol:'0.4M', signal:'BUY', pe:'61.3'},
+  {sym:'EICHERMOT', ex:'NSE', name:'Eicher Motors', cap:'Large Cap', price:'5,124.70', chg:'+0.46%', dir:'up', vol:'0.5M', signal:'BUY', pe:'28.7'},
+  {sym:'HEROMOTOCO', ex:'NSE', name:'Hero MotoCorp', cap:'Large Cap', price:'5,236.10', chg:'-0.33%', dir:'down', vol:'0.6M', signal:'HOLD', pe:'21.5'},
+  // NSE — mid / small caps
+  {sym:'TATAPOWER', ex:'NSE', name:'Tata Power Co.', cap:'Mid Cap', price:'452.10', chg:'+6.82%', dir:'up', vol:'21.4M', signal:'BUY', pe:'31.2'},
+  {sym:'ZOMATO', ex:'NSE', name:'Zomato Ltd (Eternal)', cap:'Mid Cap', price:'218.40', chg:'-4.61%', dir:'down', vol:'26.9M', signal:'HOLD', pe:'88.4'},
+  {sym:'UPL', ex:'NSE', name:'UPL Ltd', cap:'Mid Cap', price:'563.00', chg:'-0.91%', dir:'down', vol:'3.8M', signal:'HOLD', pe:'—'},
+  {sym:'INDUSINDBK', ex:'NSE', name:'IndusInd Bank', cap:'Mid Cap', price:'1,020.80', chg:'-0.38%', dir:'down', vol:'4.2M', signal:'HOLD', pe:'12.6'},
+  {sym:'CANBK', ex:'NSE', name:'Canara Bank', cap:'Mid Cap', price:'131.25', chg:'-0.42%', dir:'down', vol:'9.1M', signal:'HOLD', pe:'6.8'},
+  {sym:'PAYTM', ex:'NSE', name:'One 97 Communications', cap:'Mid Cap', price:'612.30', chg:'-3.85%', dir:'down', vol:'5.4M', signal:'HOLD', pe:'—'},
+  {sym:'IDEA', ex:'NSE', name:'Vodafone Idea', cap:'Small Cap', price:'14.28', chg:'-3.20%', dir:'down', vol:'44.1M', signal:'SELL', pe:'—'},
+  {sym:'DIXON', ex:'NSE', name:'Dixon Technologies', cap:'Small Cap', price:'14,220.00', chg:'+3.98%', dir:'up', vol:'0.6M', signal:'BUY', pe:'112.6'},
+  {sym:'PVRINOX', ex:'NSE', name:'PVR INOX Ltd', cap:'Small Cap', price:'1,340.10', chg:'-2.74%', dir:'down', vol:'0.7M', signal:'HOLD', pe:'—'},
+  {sym:'HAL', ex:'NSE', name:'Hindustan Aeronautics', cap:'Mid Cap', price:'4,812.00', chg:'+5.14%', dir:'up', vol:'1.3M', signal:'BUY', pe:'36.8'},
+  // BSE-listed
+  {sym:'BSE', ex:'BSE', name:'BSE Ltd', cap:'Mid Cap', price:'4,825.40', chg:'+1.05%', dir:'up', vol:'0.9M', signal:'BUY', pe:'48.2'},
+  {sym:'RPGLIFE', ex:'BSE', name:'RPG Life Sciences', cap:'Small Cap', price:'2,786.50', chg:'-0.62%', dir:'down', vol:'0.02M', signal:'HOLD', pe:'22.4'},
+  // ETFs
+  {sym:'NIFTYBEES', ex:'NSE', name:'Nippon India ETF Nifty BeES', cap:'ETF', price:'248.60', chg:'+0.62%', dir:'up', vol:'2.1M', signal:'BUY', pe:'—'},
+  {sym:'BANKBEES', ex:'NSE', name:'Nippon India ETF Bank BeES', cap:'ETF', price:'572.30', chg:'-0.25%', dir:'down', vol:'0.8M', signal:'HOLD', pe:'—'},
+  {sym:'GOLDBEES', ex:'NSE', name:'Nippon India ETF Gold BeES', cap:'ETF', price:'71.24', chg:'+0.38%', dir:'up', vol:'3.2M', signal:'BUY', pe:'—'},
+];
+
+const STOCK_DETAIL = {
+  sym:'HDFCBANK', ex:'NSE', name:'HDFC Bank Ltd', price:'1,672.15', chg:'+7.35', pct:'+0.44%', dir:'up',
+  ranges:['1D','1W','1M','3M','6M','1Y','5Y'],
+  metrics:[
+    {label:'Market Cap', val:'₹12.71 L Cr'},
+    {label:'P/E', val:'19.8'},
+    {label:'EPS', val:'₹84.4'},
+    {label:'52W High', val:'₹1,880.00'},
+    {label:'52W Low', val:'₹1,363.45'},
+    {label:'Volume', val:'14.7M'},
+  ],
+  signal:{technical:74, fundamental:81, momentum:66, institutional:78},
+  call:{action:'BUY', entry:'1,655 – 1,665', target:'1,820', stop:'1,590', ret:'+9.3%', risk:'Moderate', horizon:'3–6 months'},
+  fundamentals:[
+    {label:'ROE', val:'17.2%'},{label:'ROCE', val:'12.4%'},{label:'Debt/Equity', val:'0.86'},
+    {label:'Net Margin', val:'26.1%'},{label:'Book Value', val:'₹612.4'},{label:'Div. Yield', val:'1.1%'},
+  ],
+  peers:[
+    {sym:'ICICIBANK', pe:'18.2', roe:'16.8%', mcap:'₹8.5 L Cr'},
+    {sym:'KOTAKBANK', pe:'21.6', roe:'14.1%', mcap:'₹3.6 L Cr'},
+    {sym:'AXISBANK', pe:'14.9', roe:'15.3%', mcap:'₹3.5 L Cr'},
+  ],
+  fii:{fii:'32.4%', dii:'24.8%', promoter:'0%', public:'42.8%'},
+  news:[
+    {t:'HDFC Bank Q1 net profit rises 12% YoY, beats estimates', meta:'Results · 2h ago'},
+    {t:'Brokerages raise target price after strong deposit growth', meta:'Analyst · 6h ago'},
+    {t:'HDFC Bank board approves ₹5 interim dividend', meta:'Corporate · 1d ago'},
+  ],
+};
+
+const FO_TABS = ['NIFTY','BANK NIFTY','FINNIFTY','Stock F&O'];
+const FUTURES = [
+  {sym:'NIFTY FUT', expiry:'28 AUG', price:'24,838.00', oi:'1.42 Cr', chgOi:'+4.2%', vol:'8.9L', premium:'+25.65'},
+  {sym:'BANKNIFTY FUT', expiry:'28 AUG', price:'52,240.50', oi:'38.6L', chgOi:'-1.8%', vol:'3.1L', premium:'+50.40'},
+  {sym:'FINNIFTY FUT', expiry:'28 AUG', price:'23,930.20', oi:'12.4L', chgOi:'+2.6%', vol:'1.2L', premium:'+25.65'},
+];
+const FO_INTEL = {pcr:'1.24', maxPain:'24,800', callOi:'82.4L (24,900 CE)', putOi:'91.2L (24,700 PE)', fiiLong:'62%', fiiShort:'38%',
+  fiiIndexFut:'+1,642 Cr', fiiIndexOpt:'-512 Cr', longBuildupCount:'186', shortBuildupCount:'98', pcrOi:'0.98'};
+const MARKET_BREADTH = {advancing:1416, unchanged:98, declining:1323};
+const OI_BUILDUP = [
+  {sym:'RELIANCE', type:'Long Buildup', oiChg:'+12.4%', priceChg:'+1.1%'},
+  {sym:'TATAMOTORS', type:'Short Buildup', oiChg:'+9.1%', priceChg:'-1.6%'},
+  {sym:'ICICIBANK', type:'Long Unwinding', oiChg:'-6.4%', priceChg:'-0.3%'},
+  {sym:'INFY', type:'Short Covering', oiChg:'-8.8%', priceChg:'+0.9%'},
+];
+
+const TOP_OPTIONS = [
+  {sym:'NIFTY 18 AUG 24300 PUT', ex:'NSE', price:'38.60', chg:'-9.05 (-18.99%)', dir:'down'},
+  {sym:'NIFTY 18 AUG 24350 PUT', ex:'NSE', price:'54.40', chg:'-9.00 (-14.20%)', dir:'down'},
+  {sym:'NIFTY 18 AUG 24400 CALL', ex:'NSE', price:'96.00', chg:'-26.50 (-21.63%)', dir:'down'},
+  {sym:'NIFTY 18 AUG 24400 PUT', ex:'NSE', price:'74.30', chg:'-8.10 (-9.83%)', dir:'down'},
+  {sym:'NIFTY 18 AUG 24350 CALL', ex:'NSE', price:'125.25', chg:'-27.60 (-18.06%)', dir:'down'},
+];
+
+const OPTION_CHAIN = {
+  underlying:'NIFTY', spot:'24,812.35', expiry:'28 AUG 2026',
+  pcr:'1.24', maxPain:'24,800', callWall:'25,000', putWall:'24,600', support:'24,650', resistance:'24,950',
+  sentiment:'Neutral to Bullish',
+  rows:[
+    {strike:24600,cOi:'42.1L',cChg:'-3.2%',cLtp:'240.10',pOi:'91.2L',pChg:'+8.4%',pLtp:'52.30',flag:'put'},
+    {strike:24700,cOi:'58.4L',cChg:'+1.1%',cLtp:'168.55',pOi:'74.6L',pChg:'+5.2%',pLtp:'78.90',flag:''},
+    {strike:24800,cOi:'82.4L',cChg:'+6.8%',cLtp:'104.20',pOi:'68.9L',pChg:'-1.4%',pLtp:'118.40',flag:'atm'},
+    {strike:24900,cOi:'82.4L',cChg:'+9.4%',cLtp:'58.75',pOi:'44.1L',pChg:'-4.6%',pLtp:'176.10',flag:'call'},
+    {strike:25000,cOi:'88.7L',cChg:'+11.2%',cLtp:'28.40',pOi:'29.8L',pChg:'-6.1%',pLtp:'240.85',flag:'callwall'},
+  ],
+};
+
+const FII_DII = {
+  views:['Daily','Weekly','Monthly'],
+  cash:[
+    {date:'14 Aug', fiiBuy:'8,420', fiiSell:'9,860', fiiNet:'-1,440', diiBuy:'7,910', diiSell:'6,240', diiNet:'+1,670'},
+    {date:'13 Aug', fiiBuy:'7,120', fiiSell:'7,540', fiiNet:'-420', diiBuy:'6,880', diiSell:'6,010', diiNet:'+870'},
+    {date:'12 Aug', fiiBuy:'9,050', fiiSell:'8,340', fiiNet:'+710', diiBuy:'6,120', diiSell:'6,560', diiNet:'-440'},
+  ],
+  futures:{buy:'12,480 Cr', sell:'13,120 Cr', net:'-640 Cr'},
+  bias:{fii:'Bearish', dii:'Bullish', fo:'Neutral'},
+};
+
+const RESEARCH_CATS = ['Intraday','Swing','Positional','Long Term','F&O','ETF','Sector','Market Outlook'];
+const RESEARCH_CALL_FEATURED = {
+  sym:'TATAPOWER', action:'BUY', entry:'440 – 452', target:'510', stop:'418', ret:'+13.5%', risk:'Moderate', horizon:'6–8 weeks',
+  rationale:'Renewable capacity additions and a stronger order book support a re-rating; recent breakout above 435 resistance confirms trend continuation.',
+};
+const RESEARCH_REPORTS = [
+  {sym:'TATAPOWER', cat:'Swing', action:'BUY', ts:'Today, 09:20', status:'Active'},
+  {sym:'IDEA', cat:'Intraday', action:'SELL', ts:'Today, 09:05', status:'Target Hit'},
+  {sym:'NIFTY', cat:'Market Outlook', action:'HOLD', ts:'Yesterday', status:'Active'},
+  {sym:'DIXON', cat:'Positional', action:'BUY', ts:'2 days ago', status:'Active'},
+  {sym:'HDFCBANK', cat:'Long Term', action:'BUY', ts:'5 days ago', status:'Active'},
+  {sym:'ZOMATO', cat:'F&O', action:'SELL', ts:'6 days ago', status:'Stop Loss Hit'},
+];
+const RESEARCH_PERF = {winRate:'71%', avgReturn:'+8.4%', totalCalls:'482', methodology:'Every call is logged at publish time with entry, target and stop loss, and tracked to closure — including losses — for full transparency.'};
+
+const ACTIVE_TRADES = [
+  {sym:'TATAPOWER', type:'Swing', entry:'446.20', cmp:'452.10', target:'510.00', stop:'418.00', pl:'+1.3%', status:'Open', progress:38},
+  {sym:'DIXON', type:'Positional', entry:'13,680.00', cmp:'14,220.00', target:'15,400.00', stop:'12,950.00', pl:'+3.9%', status:'Open', progress:56},
+  {sym:'HDFCBANK', type:'Long Term', entry:'1,610.00', cmp:'1,672.15', target:'1,820.00', stop:'1,540.00', pl:'+3.9%', status:'Open', progress:29},
+  {sym:'IDEA', type:'Intraday', entry:'14.80', cmp:'14.28', target:'14.10', stop:'15.10', pl:'+3.5%', status:'Target Hit', progress:100},
+];
+const CLOSED_TRADES = [
+  {sym:'ZOMATO', type:'F&O', entry:'232.40', exit:'218.90', ret:'-5.8%'},
+  {sym:'ADANIENT', type:'Swing', entry:'2,860.00', exit:'3,050.00', ret:'+6.6%'},
+  {sym:'INFY', type:'Positional', entry:'1,780.00', exit:'1,895.30', ret:'+6.5%'},
+];
+
+const NEWS_TABS = ['All','Stocks','Markets','IPO','Economy','F&O','Global'];
+const NEWS = [
+  {t:'RBI holds repo rate steady at 6.5% for fourth straight policy', meta:'Economy · 32m ago', sentiment:'neu'},
+  {t:'HDFC Bank Q1 net profit rises 12% YoY, beats street estimates', meta:'Results · 2h ago', sentiment:'pos'},
+  {t:'FIIs turn net sellers for third session as VIX cools off', meta:'Markets · 3h ago', sentiment:'neg'},
+  {t:'Tata Power surges on new renewable capacity order win', meta:'Stocks · 4h ago', sentiment:'pos'},
+  {t:'Nifty options data hints at range-bound trade before expiry', meta:'F&O · 5h ago', sentiment:'neu'},
+  {t:'Two new IPOs open for subscription this week', meta:'IPO · 7h ago', sentiment:'neu'},
+  {t:'Dow, Nasdaq close higher on cooling inflation data', meta:'Global · 9h ago', sentiment:'pos'},
+];
+
+let WATCHLISTS = {
+  'My Stocks':[
+    {sym:'RELIANCE', price:'2,984.60', chg:'+1.12%', dir:'up', signal:'BUY'},
+    {sym:'HDFCBANK', price:'1,672.15', chg:'+0.44%', dir:'up', signal:'BUY'},
+    {sym:'INFY', price:'1,895.30', chg:'+0.87%', dir:'up', signal:'HOLD'},
+  ],
+  'Swing Trades':[
+    {sym:'TATAPOWER', price:'452.10', chg:'+6.82%', dir:'up', signal:'BUY', target:'510.00'},
+    {sym:'DIXON', price:'14,220.00', chg:'+3.98%', dir:'up', signal:'BUY', target:'15,400.00'},
+  ],
+  'Intraday':[
+    {sym:'IDEA', price:'14.28', chg:'-3.20%', dir:'down', signal:'SELL', target:'14.10'},
+  ],
+  'F&O':[
+    {sym:'NIFTY 24800 CE', price:'104.20', chg:'+6.8%', dir:'up', signal:'BUY'},
+    {sym:'BANKNIFTY FUT', price:'52,240.50', chg:'-1.8%', dir:'down', signal:'HOLD'},
+  ],
+  'ETFs':[
+    {sym:'NIFTYBEES', price:'248.60', chg:'+0.62%', dir:'up', signal:'BUY'},
+  ],
+};
+
+const IPOS = [
+  {name:'Vantage Fabrics Ltd', status:'Open', band:'₹412 – 438', size:'₹620 Cr', dates:'14–18 Aug', sub:'6.2x'},
+  {name:'Northgate Logistics', status:'Upcoming', band:'TBA', size:'₹1,140 Cr', dates:'21 Aug', sub:'—'},
+  {name:'Suvidha Fintech', status:'Closed', band:'₹88 – 94', size:'₹310 Cr', dates:'7–9 Aug', sub:'18.4x'},
+  {name:'Orbit Renewables', status:'Listed', band:'₹256', size:'₹880 Cr', dates:'Listed 4 Aug', sub:'—'},
+];
+
+const GLOBAL_MARKETS = [
+  {name:'Dow Jones', val:'53,757.60', chg:'-0.19%', dir:'down'},
+  {name:'US100 Cash (Nasdaq 100)', val:'29,742.50', chg:'+0.34%', dir:'up'},
+  {name:'S&P 500', val:'7,798.99', chg:'+0.65%', dir:'up'},
+  {name:'FTSE 100', val:'8,290.75', chg:'-0.12%', dir:'down'},
+  {name:'DAX', val:'18,640.20', chg:'+0.19%', dir:'up'},
+  {name:'Nikkei 225', val:'68,713.80', chg:'+0.59%', dir:'up'},
+  {name:'Hang Seng', val:'17,860.30', chg:'+0.85%', dir:'up'},
+];
+const COMMODITIES = [
+  {name:'Gold', val:'₹71,240 /10g', chg:'+0.38%', dir:'up'},
+  {name:'Silver', val:'₹84,120 /kg', chg:'+0.62%', dir:'up'},
+  {name:'Crude Oil', val:'$79.40 /bbl', chg:'-0.85%', dir:'down'},
+  {name:'Natural Gas', val:'$2.18 /mmBtu', chg:'+1.10%', dir:'up'},
+];
+
+const NOTIFICATIONS = [
+  {t:'RELIANCE crossed your alert price of ₹2,980', meta:'Price alert · 12m ago', type:'price'},
+  {t:'New research call published: TATAPOWER — BUY', meta:'Research · 1h ago', type:'research'},
+  {t:'NIFTY moved +0.5% intraday', meta:'Index event · 2h ago', type:'index'},
+  {t:'HDFCBANK Q1 results declared', meta:'Breaking news · 2h ago', type:'news'},
+  {t:'IDEA hit your stop loss trigger of ₹15.10', meta:'Trade alert · 3h ago', type:'trade'},
+  {t:'DIXON crossed 52-week high', meta:'52W alert · 5h ago', type:'price'},
+];
+
+const AI_PROMPTS = [
+  'Why is NIFTY falling?',
+  'Show bullish stocks',
+  'Analyse HDFCBANK',
+  'What is FII doing today?',
+];
+
+const SCREENER_FIELDS = ['Market Cap','Sector','P/E','ROE','ROCE','Growth','Volume','RSI','52W Levels','Institutional Holdings'];
+
+const DERIVATIVE_TOOLS = [
+  {name:'Option Chain', ico:'🔗', pro:true, route:'optionchain'},
+  {name:'Strategy Builder', ico:'📐', pro:false, route:'fo'},
+  {name:'Nifty Analysis', ico:'🧠', pro:true, route:'fo'},
+  {name:'Open Interest', ico:'📊', pro:true, route:'fo'},
+  {name:'Options Trend', ico:'📈', pro:true, route:'optionchain'},
+  {name:'Max Pain', ico:'🎯', pro:false, route:'optionchain'},
+  {name:'Dashboard', ico:'📉', pro:true, route:'fo'},
+  {name:'Combined OI', ico:'🔄', pro:true, route:'fo'},
+  {name:'Multi Strike OI', ico:'📍', pro:true, route:'optionchain'},
+  {name:'Chain EOD', ico:'📋', pro:false, route:'optionchain'},
+  {name:'Straddle', ico:'↔️', pro:false, route:'fo'},
+  {name:'Strangle', ico:'🔀', pro:false, route:'fo'},
+  {name:'Short Straddle', ico:'💰', pro:true, route:'fo'},
+  {name:'Futures Trend', ico:'📈', pro:false, route:'fo'},
+];
+
+const MARKET_INTEL_LINKS = [
+  {name:'Gift Nifty', ico:'🌐', route:'markets'},
+  {name:'Nifty Heatmap', ico:'🗺️', route:'markets'},
+  {name:'FII DII Activity', ico:'🏦', route:'fiidii'},
+  {name:'Results Calendar', ico:'📋', route:'markets'},
+  {name:'AI Equity Bundles', ico:'🤖', route:'intelligence'},
+  {name:'Market Movers', ico:'📊', route:'stocks'},
+  {name:'Index Contributors', ico:'🏛️', route:'markets'},
+  {name:'Sector Performance', ico:'📈', route:'markets'},
+];
+
+const BROKERS = [
+  {name:'Dhan', url:'https://login.dhan.co/?location=DH_WEB&refer=KBH7564&gad_source=1&gad_campaignid=23647942037&gbraid=0AAAABDF7XZ4BFg4-lNUlbITm1l2I8nlaE', ico:'🟦'},
+  {name:'Zerodha', url:'https://kite.zerodha.com/', ico:'🟧'},
+  {name:'Angel One', url:'https://www.angelone.in', ico:'🟥'},
+  {name:'Groww', url:'https://groww.in/login', ico:'🟩'},
+  {name:'Upstox', url:'https://upstox.com/open-demat-account/?f=NF2W&gad_source=1&gad_campaignid=6514267673&gbraid=0AAAAACpOdcAqX0ZODlBxQCsnay5yUHm-S', ico:'🟪'},
+  {name:'IndMoney', url:'https://indmoney.com/', ico:'🟨'},
+];
+
+// ===================== COUNTRY CALLING CODES =====================
+// name, ISO2, dial code. India listed first as the app's primary market.
+const COUNTRIES = [
+  {n:'India', iso:'IN', d:'+91'},
+  {n:'United States', iso:'US', d:'+1'},
+  {n:'United Kingdom', iso:'GB', d:'+44'},
+  {n:'United Arab Emirates', iso:'AE', d:'+971'},
+  {n:'Singapore', iso:'SG', d:'+65'},
+  {n:'Australia', iso:'AU', d:'+61'},
+  {n:'Canada', iso:'CA', d:'+1'},
+  {n:'Afghanistan', iso:'AF', d:'+93'},
+  {n:'Albania', iso:'AL', d:'+355'},
+  {n:'Algeria', iso:'DZ', d:'+213'},
+  {n:'Argentina', iso:'AR', d:'+54'},
+  {n:'Austria', iso:'AT', d:'+43'},
+  {n:'Bahrain', iso:'BH', d:'+973'},
+  {n:'Bangladesh', iso:'BD', d:'+880'},
+  {n:'Belgium', iso:'BE', d:'+32'},
+  {n:'Bhutan', iso:'BT', d:'+975'},
+  {n:'Brazil', iso:'BR', d:'+55'},
+  {n:'Brunei', iso:'BN', d:'+673'},
+  {n:'Bulgaria', iso:'BG', d:'+359'},
+  {n:'Cambodia', iso:'KH', d:'+855'},
+  {n:'Chile', iso:'CL', d:'+56'},
+  {n:'China', iso:'CN', d:'+86'},
+  {n:'Colombia', iso:'CO', d:'+57'},
+  {n:'Croatia', iso:'HR', d:'+385'},
+  {n:'Cyprus', iso:'CY', d:'+357'},
+  {n:'Czech Republic', iso:'CZ', d:'+420'},
+  {n:'Denmark', iso:'DK', d:'+45'},
+  {n:'Egypt', iso:'EG', d:'+20'},
+  {n:'Estonia', iso:'EE', d:'+372'},
+  {n:'Ethiopia', iso:'ET', d:'+251'},
+  {n:'Fiji', iso:'FJ', d:'+679'},
+  {n:'Finland', iso:'FI', d:'+358'},
+  {n:'France', iso:'FR', d:'+33'},
+  {n:'Germany', iso:'DE', d:'+49'},
+  {n:'Ghana', iso:'GH', d:'+233'},
+  {n:'Greece', iso:'GR', d:'+30'},
+  {n:'Hong Kong', iso:'HK', d:'+852'},
+  {n:'Hungary', iso:'HU', d:'+36'},
+  {n:'Iceland', iso:'IS', d:'+354'},
+  {n:'Indonesia', iso:'ID', d:'+62'},
+  {n:'Iran', iso:'IR', d:'+98'},
+  {n:'Iraq', iso:'IQ', d:'+964'},
+  {n:'Ireland', iso:'IE', d:'+353'},
+  {n:'Israel', iso:'IL', d:'+972'},
+  {n:'Italy', iso:'IT', d:'+39'},
+  {n:'Japan', iso:'JP', d:'+81'},
+  {n:'Jordan', iso:'JO', d:'+962'},
+  {n:'Kazakhstan', iso:'KZ', d:'+7'},
+  {n:'Kenya', iso:'KE', d:'+254'},
+  {n:'Kuwait', iso:'KW', d:'+965'},
+  {n:'Latvia', iso:'LV', d:'+371'},
+  {n:'Lebanon', iso:'LB', d:'+961'},
+  {n:'Lithuania', iso:'LT', d:'+370'},
+  {n:'Luxembourg', iso:'LU', d:'+352'},
+  {n:'Malaysia', iso:'MY', d:'+60'},
+  {n:'Maldives', iso:'MV', d:'+960'},
+  {n:'Malta', iso:'MT', d:'+356'},
+  {n:'Mauritius', iso:'MU', d:'+230'},
+  {n:'Mexico', iso:'MX', d:'+52'},
+  {n:'Mongolia', iso:'MN', d:'+976'},
+  {n:'Morocco', iso:'MA', d:'+212'},
+  {n:'Myanmar', iso:'MM', d:'+95'},
+  {n:'Nepal', iso:'NP', d:'+977'},
+  {n:'Netherlands', iso:'NL', d:'+31'},
+  {n:'New Zealand', iso:'NZ', d:'+64'},
+  {n:'Nigeria', iso:'NG', d:'+234'},
+  {n:'Norway', iso:'NO', d:'+47'},
+  {n:'Oman', iso:'OM', d:'+968'},
+  {n:'Pakistan', iso:'PK', d:'+92'},
+  {n:'Philippines', iso:'PH', d:'+63'},
+  {n:'Poland', iso:'PL', d:'+48'},
+  {n:'Portugal', iso:'PT', d:'+351'},
+  {n:'Qatar', iso:'QA', d:'+974'},
+  {n:'Romania', iso:'RO', d:'+40'},
+  {n:'Russia', iso:'RU', d:'+7'},
+  {n:'Saudi Arabia', iso:'SA', d:'+966'},
+  {n:'Serbia', iso:'RS', d:'+381'},
+  {n:'Slovakia', iso:'SK', d:'+421'},
+  {n:'Slovenia', iso:'SI', d:'+386'},
+  {n:'South Africa', iso:'ZA', d:'+27'},
+  {n:'South Korea', iso:'KR', d:'+82'},
+  {n:'Spain', iso:'ES', d:'+34'},
+  {n:'Sri Lanka', iso:'LK', d:'+94'},
+  {n:'Sweden', iso:'SE', d:'+46'},
+  {n:'Switzerland', iso:'CH', d:'+41'},
+  {n:'Taiwan', iso:'TW', d:'+886'},
+  {n:'Tanzania', iso:'TZ', d:'+255'},
+  {n:'Thailand', iso:'TH', d:'+66'},
+  {n:'Turkey', iso:'TR', d:'+90'},
+  {n:'Uganda', iso:'UG', d:'+256'},
+  {n:'Ukraine', iso:'UA', d:'+380'},
+  {n:'Vietnam', iso:'VN', d:'+84'},
+  {n:'Zimbabwe', iso:'ZW', d:'+263'},
+];
+
+// ===================== NAV CONFIG =====================
+const SIDEBAR_NAV = [
+  {id:'home', label:'Home', ico:'⌂'},
+  {id:'livemarkets', label:'Live Markets', ico:'⬤'},
+  {id:'markets', label:'Markets', ico:'◈'},
+  {id:'stocks', label:'Stocks', ico:'▤'},
+  {id:'fo', label:'F&O', ico:'⇄'},
+  {id:'research', label:'Research', ico:'✎'},
+  {id:'trades', label:'Active Trades', ico:'◷'},
+  {id:'fiidii', label:'FII/DII', ico:'⇵'},
+  {id:'news', label:'News', ico:'▧'},
+  {id:'watchlist', label:'Watchlist', ico:'★'},
+  {id:'profile', label:'Profile', ico:'⦿'},
+];
+const BOTTOM_NAV = [
+  {id:'home', label:'Home', ico:'⌂'},
+  {id:'watchlist', label:'Watchlist', ico:'🔖'},
+  {id:'intelligence', label:'', ico:'✦', center:true},
+  {id:'trades', label:'Trades', ico:'☰'},
+  {id:'profile', label:'Account', ico:'👛'},
+];
+const QUICK_TABS = [
+  {id:'home', label:'Home'},
+  {id:'stocks', label:'Stocks'},
+  {id:'fo', label:'F&O'},
+  {id:'research', label:'Research'},
+  {id:'commodities', label:'Commodities'},
+];
+const MORE_MENU = [
+  {id:'livemarkets', label:'Live Markets', ico:'⬤'},
+  {id:'markets', label:'Markets', ico:'◈'},
+  {id:'stocks', label:'Stocks', ico:'▤'},
+  {id:'screener', label:'Screener', ico:'▦'},
+  {id:'fo', label:'F&O', ico:'⇄'},
+  {id:'optionchain', label:'Option Chain', ico:'⌗'},
+  {id:'fiidii', label:'FII/DII', ico:'⇵'},
+  {id:'trades', label:'Active Trades', ico:'◷'},
+  {id:'ipo', label:'IPO', ico:'✦'},
+  {id:'commodities', label:'Commodities', ico:'●'},
+  {id:'global', label:'Global Markets', ico:'⊕'},
+  {id:'profile', label:'Profile', ico:'⦿'},
+  {id:'settings', label:'Settings', ico:'⚙'},
+];
+
+// ===================== LANGUAGE / i18n =====================
+// Lightweight dictionary-based translation. Covers navigation, page titles,
+// section headers, buttons and status text. Data-driven content (stock
+// names, news headlines, research rationale paragraphs) stays in English —
+// translating thousands of dynamic market strings accurately is beyond what
+// a static dictionary can respsonsibly do, so that content is left as-is
+// rather than risk a mistranslation of financial data.
+const DICT_HI = {
+  // nav
+  'Home':'होम','Markets':'बाज़ार','Stocks':'स्टॉक्स','F&O':'एफ&ओ','Research':'रिसर्च',
+  'Active Trades':'सक्रिय ट्रेड्स','Trades':'ट्रेड्स','FII/DII':'एफआईआई/डीआईआई','News':'समाचार',
+  'Watchlist':'वॉचलिस्ट','Watchlists':'वॉचलिस्ट','Profile':'प्रोफ़ाइल','Account':'खाता','Commodities':'कमोडिटीज़',
+  'Global Markets':'वैश्विक बाज़ार','Screener':'स्क्रीनर','Option Chain':'ऑप्शन चेन','IPO':'आईपीओ','IPO Centre':'आईपीओ केंद्र',
+  'Settings':'सेटिंग्स','Search':'खोजें','Alerts':'अलर्ट','More':'और',
+  // page titles/desc
+  'Stock Discovery':'स्टॉक खोज','Futures & Options':'फ्यूचर्स और ऑप्शंस','Institutional Flows':'संस्थागत प्रवाह',
+  'Research Desk':'रिसर्च डेस्क','Report':'रिपोर्ट','Detailed Research Report':'विस्तृत रिसर्च रिपोर्ट',
+  'Newsroom':'न्यूज़रूम','Global Search':'वैश्विक खोज','Notification Centre':'सूचना केंद्र',
+  'LedgerView Intelligence':'लेजरव्यू इंटेलिजेंस','Ask the Ledger':'लेजर से पूछें','AI Screener':'एआई स्क्रीनर',
+  'Screen the market by cap, sector, price band or LedgerView signal.':'मार्केट कैप, सेक्टर, प्राइस बैंड या लेजरव्यू सिग्नल के आधार पर बाज़ार को छानें।',
+  'Track the symbols you care about across strategies.':'अपनी रणनीतियों में महत्वपूर्ण शेयरों को ट्रैक करें।',
+  // section headers
+  'Research Recommendations':'रिसर्च सिफ़ारिशें','Sector Performance':'सेक्टर प्रदर्शन','FII / DII Today':'आज एफआईआई/डीआईआई',
+  'Latest News':'ताज़ा समाचार','Your LedgerView Summary':'आपका लेजरव्यू सारांश','Explore LedgerView':'लेजरव्यू एक्सप्लोर करें',
+  'Research & Intelligence':'रिसर्च और इंटेलिजेंस','More on Markets':'बाज़ार पर और','LedgerView Market Pulse':'लेजरव्यू मार्केट पल्स',
+  'Indices':'इंडेक्स','Market Intelligence':'मार्केट इंटेलिजेंस','Market Calendar':'मार्केट कैलेंडर',
+  'Key Metrics':'मुख्य मीट्रिक','LedgerView Signal':'लेजरव्यू सिग्नल','Research Call':'रिसर्च कॉल',
+  'Fundamentals':'फंडामेंटल्स','Peer Comparison':'प्रतिस्पर्धी तुलना','FII / DII Holdings':'एफआईआई/डीआईआई होल्डिंग',
+  'News & Corporate Actions':'समाचार और कॉर्पोरेट एक्शन','15+ Derivatives Tools':'15+ डेरिवेटिव टूल्स',
+  'Top Traded Options':'सबसे अधिक ट्रेड किए गए ऑप्शंस','Futures Dashboard':'फ्यूचर्स डैशबोर्ड','F&O Intelligence':'एफ&ओ इंटेलिजेंस',
+  'OI Buildup Classification':'ओआई बिल्डअप वर्गीकरण','Stock F&O Discovery':'स्टॉक एफ&ओ खोज','Call / Put Chain':'कॉल/पुट चेन',
+  'Cash Market':'कैश मार्केट','Futures Activity':'फ्यूचर्स गतिविधि','Institutional Bias':'संस्थागत झुकाव',
+  'Trend — FII vs DII vs NIFTY':'ट्रेंड — एफआईआई बनाम डीआईआई बनाम निफ़्टी','Featured Call':'विशेष कॉल','Categories':'श्रेणियाँ',
+  'Research Reports':'रिसर्च रिपोर्ट्स','Research Performance':'रिसर्च प्रदर्शन','Rationale':'तर्क',
+  'Technical Factors':'तकनीकी कारक','Fundamental Factors':'फंडामेंटल कारक','Risks':'जोखिम',
+  'Open Positions':'खुले पोज़िशन','Closed Trade History':'बंद ट्रेड इतिहास','Stock-Specific Filters':'स्टॉक-विशिष्ट फ़िल्टर',
+  'Create Alert':'अलर्ट बनाएं','Suggested Prompts':'सुझाए गए प्रश्न','My LedgerView':'मेरा लेजरव्यू',
+  'Reports':'रिपोर्ट्स','Connected Brokers':'जुड़े हुए ब्रोकर','Support & Legal':'सहायता और कानूनी','Support Channel':'सहायता चैनल',
+  'AI Custom Scanner':'एआई कस्टम स्कैनर','Manual Filters':'मैनुअल फ़िल्टर',
+  // buttons / actions
+  'View all':'सभी देखें','See heatmap':'हीटमैप देखें','Details':'विवरण','More news':'और समाचार','Open Option Chain':'ऑप्शन चेन खोलें',
+  'Open Settings':'सेटिंग्स खोलें','Run':'चलाएं','Save':'सेव करें','Alert':'अलर्ट','Backtest':'बैकटेस्ट',
+  // stamps / status
+  'BUY':'खरीदें','SELL':'बेचें','HOLD':'होल्ड',
+  // brokers/section
+  'Toggle theme':'थीम बदलें','You':'आप','LedgerView Intelligence':'लेजरव्यू इंटेलिजेंस','Ask':'पूछें','Conversation':'बातचीत',
+  // table / column headers
+  'Symbol':'सिंबल','Price':'मूल्य','Change':'बदलाव','Volume':'वॉल्यूम','Signal':'सिग्नल','Exchange':'एक्सचेंज',
+  'Contract':'कॉन्ट्रैक्ट','Expiry':'एक्सपायरी','OI':'ओआई','Chg in OI':'ओआई में बदलाव','Chg OI':'ओआई बदलाव','Premium':'प्रीमियम',
+  'Strike':'स्ट्राइक','LTP':'एलटीपी','Date':'तारीख','FII Buy':'एफआईआई खरीद','FII Sell':'एफआईआई बिक्री','FII Net':'एफआईआई नेट',
+  'DII Buy':'डीआईआई खरीद','DII Sell':'डीआईआई बिक्री','DII Net':'डीआईआई नेट','Category':'श्रेणी','Call':'कॉल','Published':'प्रकाशित','Status':'स्थिति',
+  'Type':'प्रकार','Entry':'एंट्री','Exit':'एग्ज़िट','Return':'रिटर्न','Index':'इंडेक्स','Value':'मूल्य',
+  // stat / metric labels
+  'Market Cap':'मार्केट कैप','P/E':'पी/ई','EPS':'ईपीएस','52W High':'52सप्ताह हाई','52W Low':'52सप्ताह लो',
+  'ROE':'आरओई','ROCE':'आरओसीई','Debt/Equity':'डेट/इक्विटी','Net Margin':'नेट मार्जिन','Book Value':'बुक वैल्यू','Div. Yield':'डिविडेंड यील्ड',
+  'Technical':'तकनीकी','Fundamental':'फंडामेंटल','Momentum':'मोमेंटम','Institutional':'संस्थागत',
+  'Target':'टारगेट','Stop Loss':'स्टॉप लॉस','Expected Return':'संभावित रिटर्न','Risk':'जोखिम','Horizon':'अवधि',
+  'CMP':'सीएमपी','P&L':'लाभ/हानि','FII':'एफआईआई','DII':'डीआईआई','Promoter':'प्रमोटर','Public':'पब्लिक',
+  'PCR':'पीसीआर','Max Pain':'मैक्स पेन','Call Wall':'कॉल वॉल','Put Wall':'पुट वॉल','Support':'सपोर्ट','Resistance':'रेज़िस्टेंस',
+  'FII Futures Positioning':'एफआईआई फ्यूचर्स पोज़िशनिंग','Highest Call OI':'सर्वाधिक कॉल ओआई','Highest Put OI':'सर्वाधिक पुट ओआई',
+  'Long':'लॉन्ग','Short':'शॉर्ट','Long Buildup':'लॉन्ग बिल्डअप','Short Buildup':'शॉर्ट बिल्डअप','Long Unwinding':'लॉन्ग अनवाइंडिंग','Short Covering':'शॉर्ट कवरिंग',
+  'FII Flow':'एफआईआई प्रवाह','DII Flow':'डीआईआई प्रवाह','Advance / Decline':'एडवांस/डिक्लाइन','India VIX':'इंडिया विक्स','Market Score':'मार्केट स्कोर',
+  'Net today':'आज नेट','Advancing':'बढ़त में','F&O Bias':'एफ&ओ रुझान','Cooling':'ठंडा हो रहा',
+  // cap / category chips
+  'Large Cap':'लार्ज कैप','Mid Cap':'मिड कैप','Small Cap':'स्मॉल कैप','ETF':'ईटीएफ','ETFs':'ईटीएफ',
+  'Intraday':'इंट्राडे','Swing':'स्विंग','Positional':'पोज़िशनल','Long Term':'लॉन्ग टर्म','Sector':'सेक्टर','Market Outlook':'मार्केट आउटलुक',
+  // trade status
+  'Open':'खुला','Closed':'बंद','Target Hit':'टारगेट पूरा','Stop Loss Hit':'स्टॉप लॉस लगा','Active':'सक्रिय',
+  // filters/misc
+  'All':'सभी','Gainers':'गेनर्स','Losers':'लूज़र्स','Most Active':'सर्वाधिक सक्रिय','Sectors':'सेक्टर','Heatmap':'हीटमैप',
+  'Indian Markets':'भारतीय बाज़ार','Price Band':'प्राइस बैंड','Issue Size':'इश्यू साइज़','Subscription':'सब्सक्रिप्शन','Upcoming':'आगामी','Listed':'लिस्टेड',
+  'Appearance':'दिखावट','Notifications':'सूचनाएं','Language':'भाषा','Data Preferences':'डेटा प्राथमिकताएं',
+  'Help Centre':'सहायता केंद्र','Contact / Feedback':'संपर्क / फ़ीडबैक','Personal Information':'व्यक्तिगत जानकारी',
+  'Billing':'बिलिंग','Security':'सुरक्षा','Navigate':'नेविगेट करें','Create Watchlist':'वॉचलिस्ट बनाएं',
+  'Add Alert':'अलर्ट जोड़ें','Price Alert':'प्राइस अलर्ट','% Movement':'% मूवमेंट','52-Week Level':'52-सप्ताह स्तर','Research Alert':'रिसर्च अलर्ट',
+  'Latest':'नवीनतम','Results':'रिज़ल्ट्स','Corporate':'कॉर्पोरेट','Analyst':'एनालिस्ट','Industry':'उद्योग','Breaking':'ब्रेकिंग',
+  'IPOs':'आईपीओ','All Indices':'सभी इंडेक्स',
+  'Live':'लाइव','Get live data':'लाइव डेटा प्राप्त करें','Fetching live data…':'लाइव डेटा प्राप्त हो रहा है…','Retry live fetch':'पुनः प्रयास करें',
+  'Live Markets':'लाइव मार्केट्स','Last live fetch':'अंतिम लाइव फ़ेच','Refresh Now':'अभी रीफ़्रेश करें','Fetching…':'फ़ेच हो रहा है…',
+  'Not fetched yet this session':'इस सत्र में अभी तक फ़ेच नहीं हुआ','Index Levels':'इंडेक्स स्तर','Instrument':'इंस्ट्रूमेंट','Level':'स्तर',
+  'Cross-Reference':'क्रॉस-रेफरेंस','Bloomberg Markets':'ब्लूमबर्ग मार्केट्स','NSE Live Indices':'एनएसई लाइव इंडेक्स',
+  'Opens the official site in a new tab for independent, exchange-sourced confirmation of the levels above.':'ऊपर दिए गए स्तरों की स्वतंत्र, एक्सचेंज-स्रोत पुष्टि के लिए नए टैब में आधिकारिक साइट खोलता है।',
+  'Market Breadth':'मार्केट ब्रेड्थ','Advancing':'बढ़त','Declining':'गिरावट','Unchanged':'अपरिवर्तित',
+  'Top Gainers':'टॉप गेनर्स','Top Losers':'टॉप लूज़र्स','Most Active Stocks':'सबसे सक्रिय स्टॉक्स','F&O Snapshot':'एफ&ओ स्नैपशॉट',
+  'FII Index Fut':'एफआईआई इंडेक्स फ्यूचर्स','FII Index Opt':'एफआईआई इंडेक्स ऑप्शंस','Long Buildup':'लॉन्ग बिल्डअप','Short Buildup':'शॉर्ट बिल्डअप','PCR (OI)':'पीसीआर (ओआई)',
+  'Checklist':'चेकलिस्ट','Checklist Score':'चेकलिस्ट स्कोर',
+};
+function tr(str){
+  if(STATE.lang !== 'hi') return str;
+  return DICT_HI[str] || str;
+}
+function toggleLang(){
+  STATE.lang = STATE.lang === 'hi' ? 'en' : 'hi';
+  const btn = document.getElementById('langBtn');
+  if(btn) btn.textContent = STATE.lang === 'hi' ? 'हिं' : 'EN';
+  render();
+}
+// Sorted longest-first so multi-word phrases match before their substrings do.
+const DICT_HI_KEYS = Object.keys(DICT_HI).sort((a,b)=>b.length-a.length);
+function translateTree(root){
+  if(!root || STATE.lang !== 'hi') return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes = [];
+  let n; while(n = walker.nextNode()) nodes.push(n);
+  nodes.forEach(node=>{
+    const original = node.nodeValue;
+    if(!original || !original.trim()) return;
+    let text = original;
+    for(const key of DICT_HI_KEYS){
+      if(text.indexOf(key) !== -1) text = text.split(key).join(DICT_HI[key]);
+    }
+    if(text !== original) node.nodeValue = text;
+  });
+}
+
+// ===================== NSE / SEBI MARKET TIMING =====================
+// Official NSE trading holidays for 2026 (equity, equity-derivatives & SLB
+// segments), sourced from the NSE holiday circular. Weekend-only holidays
+// are omitted since Sat/Sun are already non-trading days.
+const NSE_HOLIDAYS_2026 = [
+  '2026-01-15','2026-01-26','2026-03-03','2026-03-26','2026-03-31',
+  '2026-04-03','2026-04-14','2026-05-01','2026-05-28','2026-06-26',
+  '2026-09-14','2026-10-02','2026-10-20','2026-11-10','2026-11-24','2026-12-25',
+];
+function getIST(){
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset()*60000;
+  return new Date(utcMs + 5.5*60*60000);
+}
+function istDateStr(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isNSEHoliday(d){ return NSE_HOLIDAYS_2026.includes(istDateStr(d)); }
+// NSE equity/index cash-market session: Mon–Fri, 09:15–15:30 IST
+function nseEquityStatus(){
+  const d = getIST();
+  const day = d.getDay(), mins = d.getHours()*60 + d.getMinutes();
+  const weekday = day>=1 && day<=5;
+  const holiday = isNSEHoliday(d);
+  const open = weekday && !holiday && mins>=555 && mins<=930; // 9:15–15:30
+  return {open, d, weekday, holiday, mins};
+}
+// MCX commodity segment (also SEBI-regulated): Mon–Fri, 09:00–23:30 IST
+function mcxCommodityStatus(){
+  const d = getIST();
+  const day = d.getDay(), mins = d.getHours()*60 + d.getMinutes();
+  const weekday = day>=1 && day<=5;
+  const holiday = isNSEHoliday(d);
+  const open = weekday && !holiday && mins>=540 && mins<=1410; // 9:00–23:30
+  return {open, d};
+}
+function marketStatusLabel(){
+  const s = nseEquityStatus();
+  const hi = STATE.lang === 'hi';
+  if(s.open) return {open:true, text: hi ? 'बाज़ार खुला है · 09:15–15:30 IST' : 'Market Open · 09:15–15:30 IST'};
+  let reason;
+  if(s.holiday) reason = hi ? 'बाज़ार बंद · एनएसई अवकाश' : 'Market Closed · NSE Holiday';
+  else if(!s.weekday) reason = hi ? 'बाज़ार बंद · सप्ताहांत' : 'Market Closed · Weekend';
+  else if(s.mins < 555) reason = hi ? 'बाज़ार बंद · 09:15 बजे खुलेगा' : 'Market Closed · Opens 09:15 IST';
+  else reason = hi ? 'बाज़ार बंद · 09:15 बजे फिर खुलेगा' : 'Market Closed · Reopens 09:15 IST';
+  return {open:false, text:reason};
+}
+
+let STATE = {route:'home', lang:'en', stockSym:'HDFCBANK', foTab:'NIFTY', newsTab:'All', watchlistTab:'My Stocks', researchTab:'Stocks', stockTab:'Stocks', fiiView:'Daily', tradesTab:'Intraday'};
+
+// ===================== BRAND ICON GLYPHS (inline SVG) =====================
+const ICO_INSTAGRAM = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="17.2" cy="6.8" r="1.15" fill="#fff" stroke="none"/></svg>`;
+const ICO_LINKEDIN = `<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4.5" r="2.3"/><path d="M9.5 9h4v2.1c.7-1.2 2.1-2.4 4.3-2.4 4 0 5.2 2.4 5.2 6.3V21h-4v-5.3c0-1.9-.7-3.1-2.4-3.1-1.6 0-2.6 1.1-2.6 3.1V21h-4V9z"/></svg>`;
+const ICO_MAIL = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>`;
+
+function navigate(route, extra){
+  STATE.route = route;
+  if(extra) Object.assign(STATE, extra);
+  closeMore();
+  render();
+  window.scrollTo(0,0);
+}
+
+// ===================== SHELL RENDER =====================
+function renderShell(){
+  const sideEl = document.getElementById('sidebarNav');
+  sideEl.innerHTML = `<div class="nav-label">${tr('Navigate')}</div>` + SIDEBAR_NAV.map((n,i)=>`
+    <a class="nav-item ${STATE.route===n.id?'active':''}" href="javascript:void(0)" onclick="navigate('${n.id}');return false;">
+      <span class="nav-ico">${n.ico}</span><span>${tr(n.label)}</span>
+    </a>`).join('');
+
+  const bnEl = document.getElementById('bottomNavInner');
+  bnEl.innerHTML = BOTTOM_NAV.map(n=>`
+    <a class="bn-item ${n.center?'center':''} ${STATE.route===n.id?'active':''}" href="javascript:void(0)"
+       onclick="navigate('${n.id}');return false;">
+      <span class="bn-ico">${n.ico}</span><span>${tr(n.label)}</span>
+    </a>`).join('');
+
+  const qtEl = document.getElementById('quickTabs');
+  if(qtEl){
+    qtEl.innerHTML = QUICK_TABS.map(t=>`
+      <a class="qt-item ${STATE.route===t.id?'active':''}" href="javascript:void(0)" onclick="navigate('${t.id}');return false;">${tr(t.label)}</a>`).join('');
+  }
+
+  document.getElementById('moreGrid').innerHTML = MORE_MENU.map(n=>`
+    <a href="javascript:void(0)" onclick="navigate('${n.id}');return false;"><span style="font-size:18px;">${n.ico}</span>${tr(n.label)}</a>`).join('');
+
+  const tickerHtml = TICKER.map(t=>`
+    <div class="ticker-item" style="cursor:pointer;" onclick="openIndexChart('${t.name}','${t.val}')">
+      <span class="tname">${t.name}</span><span class="tval">${t.val}</span>
+      <span class="tchg ${t.dir}"><span class="arrow">${t.dir==='up'?'▲':'▼'}</span>${t.chg}</span>
+    </div>`).join('');
+  // duplicated once for a seamless infinite scroll loop
+  document.getElementById('tickerRow').innerHTML = tickerHtml + tickerHtml;
+
+  const ms = marketStatusLabel();
+  const mstatusText = document.getElementById('mstatusText');
+  const mstatusPulse = document.getElementById('mstatusPulse');
+  if(mstatusText) mstatusText.textContent = ms.text;
+  if(mstatusPulse) mstatusPulse.classList.toggle('closed', !ms.open);
+
+  const greetEl = document.getElementById('greetText');
+  const firstName = PROFILE ? (PROFILE.name.trim().split(/\s+/)[0]) : 'Rohan';
+  if(greetEl) greetEl.innerHTML = STATE.lang==='hi' ? `नमस्ते <b>${firstName}</b>` : `Hello <b>${firstName}</b>`;
+}
+function openMore(){ document.getElementById('moreSheet').classList.add('open'); }
+function closeMore(){ document.getElementById('moreSheet').classList.remove('open'); }
+function toggleNotif(){ navigate('alerts'); }
+
+function toggleTheme(){
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  html.setAttribute('data-theme', isLight ? 'dark' : 'light');
+  const btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = isLight ? '🌙' : '☀️';
+}
+
+function openChartModal(sym, range, basePriceStr){
+  range = range || STATE.chartRange || '1M';
+  const base = basePriceStr!=null ? parseBase(basePriceStr) : (STATE.chartBase || parseBase(STOCK_DETAIL.price));
+  STATE.chartBase = base;
+  document.getElementById('chartModalTitle').textContent = `${sym} · ${range}`;
+  document.getElementById('chartModalTabs').innerHTML = STOCK_DETAIL.ranges.map(r=>`
+    <div class="tab-btn ${r===range?'active':''}" onclick="event.stopPropagation();openChartModal('${sym}','${r}',${base})">${r}</div>`).join('');
+  document.getElementById('chartModalBody').innerHTML = `
+    <div class="chart-canvas-wrap" id="modalChartWrap">
+      <canvas class="chart-price-canvas"></canvas>
+      <canvas class="chart-vol-canvas"></canvas>
+      <canvas class="chart-rsi-canvas"></canvas>
+      <div class="chart-legend">
+        <span><span class="sw" style="background:var(--brass);"></span>SMA 20</span>
+        <span><span class="sw" style="background:var(--bull);"></span>Bullish candle</span>
+        <span><span class="sw" style="background:var(--bear);"></span>Bearish candle</span>
+        <span>Volume + RSI(14) below</span>
+      </div>
+    </div>`;
+  document.getElementById('chartModal').classList.add('open');
+  requestAnimationFrame(()=>drawCandleChart('modalChartWrap', base, 'modal:'+sym+':'+range));
+}
+function openIndexChart(name, valStr){
+  openChartModal(name, STATE.chartRange||'1M', valStr);
+}
+function closeChartModal(){ document.getElementById('chartModal').classList.remove('open'); }
+
+// ===================== CANDLESTICK CHART ENGINE =====================
+// Illustrative price-action generator anchored to a real current level (see
+// openChartModal/openIndexChart callers). Not a live tick feed — a static
+// prototype can't stream licensed exchange data — but every candle, the
+// SMA20 overlay, volume bars and RSI(14) below are computed live from it,
+// exactly like a real charting package would render them.
+function genSeries(base, n){
+  let price = base;
+  const out = [];
+  for(let i=0;i<n;i++){
+    const vol = base*0.006;
+    const open = price;
+    const close = Math.max(0.01, open + (Math.random()-0.5)*vol*2);
+    const high = Math.max(open,close) + Math.random()*vol*0.5;
+    const low = Math.max(0.01, Math.min(open,close) - Math.random()*vol*0.5);
+    const volume = Math.round(400000 + Math.random()*2200000);
+    out.push({o:open,h:high,l:low,c:close,v:volume});
+    price = close;
+  }
+  return out;
+}
+function calcSMA(candles, period){
+  const out = new Array(candles.length).fill(null);
+  for(let i=period-1;i<candles.length;i++){
+    let sum=0; for(let j=i-period+1;j<=i;j++) sum+=candles[j].c;
+    out[i] = sum/period;
+  }
+  return out;
+}
+function calcRSI(candles, period){
+  const out = new Array(candles.length).fill(null);
+  let avgGain=0, avgLoss=0;
+  for(let i=1;i<candles.length;i++){
+    const diff = candles[i].c - candles[i-1].c;
+    const gain = diff>0?diff:0, loss = diff<0?-diff:0;
+    if(i<=period){
+      avgGain += gain/period; avgLoss += loss/period;
+      if(i===period){ const rs = avgLoss===0?100:avgGain/avgLoss; out[i] = 100-(100/(1+rs)); }
+      continue;
+    }
+    avgGain = (avgGain*(period-1)+gain)/period;
+    avgLoss = (avgLoss*(period-1)+loss)/period;
+    const rs = avgLoss===0?100:avgGain/avgLoss;
+    out[i] = 100-(100/(1+rs));
+  }
+  return out;
+}
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+const SERIES_CACHE = {};
+function drawCandleChart(wrapId, basePrice, cacheKey){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  const priceCv = wrap.querySelector('.chart-price-canvas');
+  const volCv = wrap.querySelector('.chart-vol-canvas');
+  const rsiCv = wrap.querySelector('.chart-rsi-canvas');
+  if(!priceCv) return;
+
+  const n = 60;
+  const key = cacheKey || ('anon:'+basePrice);
+  let candles = SERIES_CACHE[key];
+  if(!candles){ candles = genSeries(basePrice, n); SERIES_CACHE[key] = candles; }
+  const sma20 = calcSMA(candles, 20);
+  const rsi14 = calcRSI(candles, 14);
+
+  const bull = cssVar('--bull') || '#22c58e';
+  const bear = cssVar('--bear') || '#ff5c62';
+  const accent = cssVar('--brass') || '#6c7fff';
+  const grid = cssVar('--rule-hair') || 'rgba(255,255,255,0.1)';
+  const faint = cssVar('--ink-faint') || '#888';
+
+  [priceCv, volCv, rsiCv].forEach(cv=>{
+    if(!cv) return;
+    cv.width = cv.clientWidth; cv.height = cv.clientHeight;
+  });
+
+  // --- price panel ---
+  const pctx = priceCv.getContext('2d');
+  const W = priceCv.width, H = priceCv.height;
+  pctx.clearRect(0,0,W,H);
+  const highs = candles.map(c=>c.h), lows = candles.map(c=>c.l);
+  const maxP = Math.max(...highs), minP = Math.min(...lows);
+  const pad = (maxP-minP)*0.08 || maxP*0.01;
+  const yMax = maxP+pad, yMin = minP-pad;
+  const y = p => H - ((p-yMin)/(yMax-yMin))*H;
+  const slot = W/n, cw = slot*0.62;
+
+  pctx.strokeStyle = grid; pctx.lineWidth = 1;
+  for(let g=0; g<=4; g++){ const gy = (H/4)*g; pctx.beginPath(); pctx.moveTo(0,gy); pctx.lineTo(W,gy); pctx.stroke(); }
+
+  candles.forEach((c,i)=>{
+    const x = i*slot + slot/2;
+    const up = c.c >= c.o;
+    pctx.strokeStyle = up?bull:bear;
+    pctx.fillStyle = up?bull:bear;
+    pctx.lineWidth = 1;
+    pctx.beginPath(); pctx.moveTo(x,y(c.h)); pctx.lineTo(x,y(c.l)); pctx.stroke();
+    const bodyTop = y(Math.max(c.o,c.c)), bodyBot = y(Math.min(c.o,c.c));
+    pctx.fillRect(x-cw/2, bodyTop, cw, Math.max(1, bodyBot-bodyTop));
+  });
+
+  pctx.strokeStyle = accent; pctx.lineWidth = 1.6; pctx.beginPath();
+  let started=false;
+  sma20.forEach((v,i)=>{
+    if(v==null) return;
+    const x = i*slot + slot/2;
+    if(!started){ pctx.moveTo(x,y(v)); started=true; } else pctx.lineTo(x,y(v));
+  });
+  pctx.stroke();
+
+  pctx.fillStyle = faint; pctx.font = '10px IBM Plex Mono, monospace';
+  pctx.fillText(yMax.toFixed(2), 4, 11);
+  pctx.fillText(yMin.toFixed(2), 4, H-4);
+
+  // --- volume panel ---
+  if(volCv){
+    const vctx = volCv.getContext('2d');
+    const VW = volCv.width, VH = volCv.height;
+    vctx.clearRect(0,0,VW,VH);
+    const maxV = Math.max(...candles.map(c=>c.v));
+    candles.forEach((c,i)=>{
+      const x = i*slot + slot/2;
+      const h = (c.v/maxV)*VH*0.9;
+      vctx.fillStyle = c.c>=c.o ? bull : bear;
+      vctx.globalAlpha = 0.55;
+      vctx.fillRect(x-cw/2, VH-h, cw, h);
+    });
+    vctx.globalAlpha = 1;
+  }
+
+  // --- RSI panel ---
+  if(rsiCv){
+    const rctx = rsiCv.getContext('2d');
+    const RW = rsiCv.width, RH = rsiCv.height;
+    rctx.clearRect(0,0,RW,RH);
+    const ry = v => RH - (v/100)*RH;
+    rctx.strokeStyle = grid; rctx.lineWidth = 1;
+    [30,50,70].forEach(lvl=>{ rctx.beginPath(); rctx.moveTo(0,ry(lvl)); rctx.lineTo(RW,ry(lvl)); rctx.stroke(); });
+    rctx.strokeStyle = accent; rctx.lineWidth = 1.4; rctx.beginPath();
+    let s2=false;
+    rsi14.forEach((v,i)=>{
+      if(v==null) return;
+      const x = i*slot + slot/2;
+      if(!s2){ rctx.moveTo(x,ry(v)); s2=true; } else rctx.lineTo(x,ry(v));
+    });
+    rctx.stroke();
+    rctx.fillStyle = faint; rctx.font = '9px IBM Plex Mono, monospace';
+    rctx.fillText('RSI 14', 4, 10);
+    const lastRsi = [...rsi14].reverse().find(v=>v!=null);
+    if(lastRsi!=null) rctx.fillText(lastRsi.toFixed(1), RW-34, 10);
+  }
+}
+function parseBase(str){
+  const n = parseFloat(String(str).replace(/[^0-9.-]/g,''));
+  return isNaN(n) ? 100 : n;
+}
+
+function openTrendModal(){
+  document.getElementById('chartModalTitle').textContent = 'FII vs DII vs NIFTY';
+  document.getElementById('chartModalTabs').innerHTML = FII_DII.views.map(v=>`<div class="tab-btn ${STATE.fiiView===v?'active':''}" onclick="event.stopPropagation();navigate('fiidii',{fiiView:'${v}'});closeChartModal();">${v}</div>`).join('');
+  document.getElementById('chartModalBody').textContent = 'trend chart — expanded 90 session flow vs index';
+  document.getElementById('chartModal').classList.add('open');
+}
+
+function setChartRange(r){
+  STATE.chartRange = r;
+  render();
+}
+
+// ===================== SMALL HELPERS =====================
+const fmtDir = d => d==='up'?'up':'down';
+function moveRow({sym,ex,price,chg,vol}){
+  const dir = chg && chg.startsWith('-') ? 'down':'up';
+  return `<tr onclick="navigate('stockdetail',{stockSym:'${sym}'})" style="cursor:pointer">
+    <td class="row-idx">${String(Math.floor(Math.random()*900)+100)}</td>
+    <td><span class="sym-cell">${sym}</span><span class="sym-sub">${ex||'NSE'}</span></td>
+    <td>₹${price}</td>
+    <td class="${dir}">${chg}</td>
+    ${vol?`<td>${vol}</td>`:''}
+  </tr>`;
+}
+function stampClass(action){
+  if(action==='BUY') return 'buy';
+  if(action==='SELL') return 'sell';
+  return 'hold';
+}
+function sentIcon(s){ return s==='pos'?'🙂':s==='neg'?'☹️':'😐'; }
+function newsCard(n){
+  return `<div class="news-card">
+    <div class="sent-badge ${n.sentiment||'neu'}">${sentIcon(n.sentiment)}</div>
+    <div><div class="news-meta">${n.meta}</div><div class="news-title">${n.t}</div></div>
+  </div>`;
+}
+function pageHead(eyebrow,title,desc){
+  return `<div class="page-head">
+    <div class="eyebrow">${tr(eyebrow)}</div>
+    <div class="page-title">${tr(title)}</div>
+    ${desc?`<div class="page-desc">${tr(desc)}</div>`:''}
+  </div>`;
+}
+function secHead(folio,title,linkTxt,linkFn){
+  return `<div class="sec-head">
+    <div class="sec-title">${tr(title)}</div>
+    ${linkTxt?`<a class="sec-link" href="javascript:void(0)" onclick="${linkFn};return false;">${tr(linkTxt)} →</a>`:''}
+  </div>`;
+}
+
+// ===================== SCREEN: HOME =====================
+function renderHome(){
+  const lead = INDICES[0];
+  const headline = `${lead.name} is ${lead.dir==='up'?'up':'down'} ${lead.pct} today.`;
+  const summaryTab = STATE.summaryTab || 'All';
+  const summaryTabs = ['All','Intraday','Swing','Positional','F&O'];
+  const summaryTrades = summaryTab==='All' ? ACTIVE_TRADES : ACTIVE_TRADES.filter(t=>t.type===summaryTab);
+  const openCount = summaryTrades.filter(t=>t.status==='Open').length;
+  const netPl = summaryTrades.length ? (summaryTrades.filter(t=>!t.pl.startsWith('-')).length >= summaryTrades.length/2 ? 'up' : 'down') : 'up';
+
+  return `
+  ${pageHead('Home', headline, `${MARKET_PULSE.score.tag} · ${MARKET_PULSE.advDec.val} advancing — here is what LedgerView Research is calling right now.`)}
+
+  <div class="status-dot-row"><span class="dot ${marketStatusLabel().open?'live':''}"></span>${marketStatusLabel().text}</div>
+  <div class="idx-row">
+    ${INDICES.slice(0,4).map(i=>`
+      <div class="idx-card" onclick="openIndexChart('${i.name}','${i.val}')">
+        <div class="idx-name">${i.dir==='up'?'▲':'▼'} ${i.name}</div>
+        <div class="idx-val">${i.val}</div>
+        <div class="idx-chg ${i.dir}">${i.chg} (${i.pct})</div>
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Market Breadth')}
+  <div class="card">
+    <div class="breadth-bar">
+      <div class="adv" style="width:${(MARKET_BREADTH.advancing/(MARKET_BREADTH.advancing+MARKET_BREADTH.unchanged+MARKET_BREADTH.declining)*100).toFixed(1)}%;"></div>
+      <div class="unc" style="width:${(MARKET_BREADTH.unchanged/(MARKET_BREADTH.advancing+MARKET_BREADTH.unchanged+MARKET_BREADTH.declining)*100).toFixed(1)}%;"></div>
+      <div class="dec" style="width:${(MARKET_BREADTH.declining/(MARKET_BREADTH.advancing+MARKET_BREADTH.unchanged+MARKET_BREADTH.declining)*100).toFixed(1)}%;"></div>
+    </div>
+    <div class="breadth-nums">
+      <span class="adv-n">▲ ${tr('Advancing')} ${MARKET_BREADTH.advancing}</span>
+      <span class="unc-n">${tr('Unchanged')} ${MARKET_BREADTH.unchanged}</span>
+      <span class="dec-n">▼ ${tr('Declining')} ${MARKET_BREADTH.declining}</span>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div>
+      ${secHead('','Top Gainers')}
+      <div class="card">
+        ${GAINERS.map(g=>`
+          <div class="mini-row" onclick="navigate('stockdetail',{stockSym:'${g.sym}'})">
+            <span class="mr-sym">${g.sym}</span>
+            <span class="mr-right"><span class="mr-price">₹${g.price}</span><span class="up">${g.chg}</span></span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div>
+      ${secHead('','Top Losers')}
+      <div class="card">
+        ${LOSERS.map(l=>`
+          <div class="mini-row" onclick="navigate('stockdetail',{stockSym:'${l.sym}'})">
+            <span class="mr-sym">${l.sym}</span>
+            <span class="mr-right"><span class="mr-price">₹${l.price}</span><span class="down">${l.chg}</span></span>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div>
+      ${secHead('','Most Active Stocks')}
+      <div class="card">
+        ${(()=>{ const maxVol = Math.max(...MOST_ACTIVE.map(m=>parseFloat(m.vol))); return MOST_ACTIVE.map(m=>`
+          <div class="mini-row" onclick="navigate('stockdetail',{stockSym:'${m.sym}'})">
+            <span class="mr-sym">${m.sym}</span>
+            <span class="mr-right">
+              <span class="mr-price">₹${m.price}</span>
+              <span class="${m.chg.startsWith('-')?'down':'up'}">${m.chg}</span>
+              <span class="vol-bar"><div style="width:${(parseFloat(m.vol)/maxVol*100).toFixed(0)}%;background:${m.chg.startsWith('-')?'var(--bear)':'var(--bull)'};"></div></span>
+            </span>
+          </div>`).join(''); })()}
+      </div>
+    </div>
+    <div>
+      ${secHead('','F&O Snapshot')}
+      <div class="card">
+        <div class="fo-snap-row"><span>${tr('FII Index Fut')}</span><span class="fs-val ${FO_INTEL.fiiIndexFut.startsWith('-')?'down':'up'}">${FO_INTEL.fiiIndexFut}</span></div>
+        <div class="fo-snap-row"><span>${tr('FII Index Opt')}</span><span class="fs-val ${FO_INTEL.fiiIndexOpt.startsWith('-')?'down':'up'}">${FO_INTEL.fiiIndexOpt}</span></div>
+        <div class="fo-snap-row"><span>${tr('Long Buildup')}</span><span class="fs-val up">${FO_INTEL.longBuildupCount}</span></div>
+        <div class="fo-snap-row"><span>${tr('Short Buildup')}</span><span class="fs-val down">${FO_INTEL.shortBuildupCount}</span></div>
+        <div class="fo-snap-row"><span>${tr('PCR (OI)')}</span><span class="fs-val">${FO_INTEL.pcrOi}</span></div>
+      </div>
+    </div>
+  </div>
+
+  ${secHead('','Your LedgerView Summary')}
+  <div class="card">
+    <div class="seg-tabs">
+      ${summaryTabs.map(t=>`<div class="seg-tab ${summaryTab===t?'active':''}" onclick="navigate('home',{summaryTab:'${t}'})">${t}</div>`).join('')}
+    </div>
+    <div class="summary-grid">
+      <div><div class="stat-label">Open Positions</div><div class="stat-value" style="font-size:22px;">${openCount}</div></div>
+      <div><div class="stat-label">Avg. Call Accuracy</div><div class="stat-value up" style="font-size:22px;">${RESEARCH_PERF.winRate}</div></div>
+      <div><div class="stat-label">Net P&L (tracked)</div><div class="stat-value ${netPl}" style="font-size:22px;">${netPl==='up'?'▲':'▼'} Positive</div></div>
+      <div><div class="stat-label">Category</div><div class="stat-value" style="font-size:22px;">${summaryTab}</div></div>
+    </div>
+  </div>
+
+  ${secHead('','Explore LedgerView')}
+  <div class="card">
+    <div class="icon-grid">
+      <a href="javascript:void(0)" onclick="navigate('stocks');return false;"><span class="icon-badge" style="background:#22345c;">📈</span>Stocks</a>
+      <a href="javascript:void(0)" onclick="navigate('fo');return false;"><span class="icon-badge" style="background:#3a2a5c;">⇄</span>F&O</a>
+      <a href="javascript:void(0)" onclick="navigate('optionchain');return false;"><span class="icon-badge" style="background:#2a4a4a;">⌗</span>Option Chain</a>
+      <a href="javascript:void(0)" onclick="navigate('screener');return false;"><span class="icon-badge" style="background:#4a3a22;">▦</span>Screener</a>
+    </div>
+  </div>
+
+  ${secHead('','Research & Intelligence')}
+  <div class="card">
+    <div class="ai-banner"><span class="ai-chip">AI</span> Every call below is cross-checked by LedgerView Intelligence before it reaches Research.</div>
+    <div class="icon-grid">
+      <a href="javascript:void(0)" onclick="navigate('research');return false;"><span class="icon-badge" style="background:#22345c;">✎</span>Research Calls</a>
+      <a href="javascript:void(0)" onclick="navigate('trades');return false;"><span class="icon-badge" style="background:#2a4a3a;">◷</span>Active Trades</a>
+      <a href="javascript:void(0)" onclick="navigate('intelligence');return false;"><span class="icon-badge" style="background:#4a3a22;">✦</span>Ask AI</a>
+      <a href="javascript:void(0)" onclick="navigate('alerts');return false;"><span class="icon-badge" style="background:#3a2a5c;">🔔</span>Alerts</a>
+    </div>
+  </div>
+
+  ${secHead('','More on Markets')}
+  <div class="grid grid-3">
+    <a class="card hoverable" href="javascript:void(0)" onclick="navigate('ipo');return false;" style="display:flex;align-items:center;justify-content:space-between;">IPOs <span>→</span></a>
+    <a class="card hoverable" href="javascript:void(0)" onclick="navigate('markets');return false;" style="display:flex;align-items:center;justify-content:space-between;">All Indices <span>→</span></a>
+    <a class="card hoverable" href="javascript:void(0)" onclick="navigate('news');return false;" style="display:flex;align-items:center;justify-content:space-between;">News <span>→</span></a>
+  </div>
+
+  ${secHead('','LedgerView Market Pulse')}
+  <div class="grid grid-5">
+    <div class="card stat-card"><div class="stat-label">${MARKET_PULSE.fiiFlow.label}</div><div class="stat-value" style="font-size:18px;">${MARKET_PULSE.fiiFlow.val}</div><div class="stat-chg ${MARKET_PULSE.fiiFlow.dir}">Net today</div></div>
+    <div class="card stat-card"><div class="stat-label">${MARKET_PULSE.diiFlow.label}</div><div class="stat-value" style="font-size:18px;">${MARKET_PULSE.diiFlow.val}</div><div class="stat-chg ${MARKET_PULSE.diiFlow.dir}">Net today</div></div>
+    <div class="card stat-card"><div class="stat-label">${MARKET_PULSE.advDec.label}</div><div class="stat-value" style="font-size:18px;">${MARKET_PULSE.advDec.val}</div><div class="stat-chg up">Advancing</div></div>
+    <div class="card stat-card"><div class="stat-label">${MARKET_PULSE.vix.label}</div><div class="stat-value" style="font-size:18px;">${MARKET_PULSE.vix.val}</div><div class="stat-chg ${MARKET_PULSE.vix.dir}">Cooling</div></div>
+    <div class="card stat-card" style="border-color:var(--brass-soft);"><div class="stat-label">${MARKET_PULSE.score.label}</div><div class="stat-value" style="font-size:18px;color:var(--brass);">${MARKET_PULSE.score.val}</div><div class="stat-chg neu">${MARKET_PULSE.score.tag}</div></div>
+  </div>
+
+  <div class="split">
+    <div>
+      ${secHead('','Research Recommendations','View all', `navigate('research')`)}
+      <div class="card">
+        <div class="list-row" style="border:none;padding-top:0;">
+          <div>
+            <div class="sym-cell" style="font-size:15px;">${RESEARCH_CALL_FEATURED.sym}</div>
+            <div class="chip-inline" style="margin-top:6px;">${RESEARCH_CALL_FEATURED.horizon}</div>
+          </div>
+          <span class="stamp ${stampClass(RESEARCH_CALL_FEATURED.action)}">${tr(RESEARCH_CALL_FEATURED.action)}</span>
+        </div>
+        <div class="hr-brass"></div>
+        <div class="grid grid-3" style="gap:10px;">
+          <div><div class="stat-label">Entry</div><div style="font-family:var(--font-mono);font-size:13px;margin-top:4px;">₹${RESEARCH_CALL_FEATURED.entry}</div></div>
+          <div><div class="stat-label">Target</div><div style="font-family:var(--font-mono);font-size:13px;margin-top:4px;color:var(--bull);">₹${RESEARCH_CALL_FEATURED.target}</div></div>
+          <div><div class="stat-label">Stop Loss</div><div style="font-family:var(--font-mono);font-size:13px;margin-top:4px;color:var(--bear);">₹${RESEARCH_CALL_FEATURED.stop}</div></div>
+        </div>
+      </div>
+
+      ${secHead('','Active Trades','View all', `navigate('trades')`)}
+      <div class="card" style="padding:0;overflow-x:auto;">
+        <table class="ledger">
+          <tbody>
+            ${ACTIVE_TRADES.slice(0,3).map(t=>`
+              <tr onclick="navigate('trades')" style="cursor:pointer">
+                <td><span class="sym-cell">${t.sym}</span><span class="sym-sub">${t.type}</span></td>
+                <td>CMP ₹${t.cmp}</td>
+                <td class="${t.pl.startsWith('-')?'down':'up'}">${t.pl}</td>
+                <td><span class="pill">${t.status}</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      ${secHead('','Sector Performance','See heatmap', `navigate('markets')`)}
+      <div class="card">
+        ${SECTORS.slice(0,6).map(s=>`
+          <div class="list-row">
+            <span style="font-size:13px;">${s.name}</span>
+            <span class="${s.dir}" style="font-family:var(--font-mono);font-size:12.5px;">${s.pct}</span>
+          </div>`).join('')}
+      </div>
+
+      ${secHead('','FII / DII Today','Details', `navigate('fiidii')`)}
+      <div class="card">
+        <div class="list-row"><span>FII Net</span><span class="down" style="font-family:var(--font-mono);">${FII_DII.cash[0].fiiNet} Cr</span></div>
+        <div class="list-row"><span>DII Net</span><span class="up" style="font-family:var(--font-mono);">${FII_DII.cash[0].diiNet} Cr</span></div>
+        <div class="list-row" style="border:none;"><span>F&O Bias</span><span class="pill">${FII_DII.bias.fo}</span></div>
+      </div>
+    </div>
+  </div>
+
+  ${secHead('','Latest News','More news', `navigate('news')`)}
+  <div class="card">
+    ${NEWS.slice(0,3).map(newsCard).join('')}
+  </div>
+  `;
+}
+
+// ===================== SCREEN: MARKETS =====================
+function renderMarkets(){
+  return `
+  ${pageHead('Markets','Markets','Indian indices, global benchmarks, sector rotation and the corporate calendar in one ledger.')}
+  <div class="tabs">
+    <div class="tab-btn active">Indian Markets</div>
+    <div class="tab-btn" onclick="navigate('global')">Global Markets</div>
+    <div class="tab-btn">Sectors</div>
+    <div class="tab-btn">Heatmap</div>
+    <div class="tab-btn">Market Calendar</div>
+  </div>
+
+  ${secHead('','Indices')}
+  <div class="grid grid-4">
+    ${INDICES.map(i=>`
+      <div class="card stat-card hoverable" style="cursor:pointer;" onclick="openIndexChart('${i.name}','${i.val}')"><div class="stat-label">${i.name}</div><div class="stat-value">${i.val}</div><div class="stat-chg ${i.dir}">${i.chg} (${i.pct})</div></div>`).join('')}
+  </div>
+
+  ${secHead('','Sector Performance — Heatmap')}
+  <div class="grid grid-4">
+    ${SECTORS.map(s=>`
+      <div class="card" style="background:${s.dir==='up'?'var(--bull-soft)':'var(--bear-soft)'};border-color:transparent;">
+        <div style="font-size:13px;font-weight:600;">${s.name}</div>
+        <div class="${s.dir}" style="font-family:var(--font-mono);font-size:16px;margin-top:8px;">${s.pct}</div>
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Institutional Flow Score')}
+  <div class="card">
+    <div class="badge-score" style="width:52px;height:52px;font-size:16px;">68</div>
+    <div class="section-note" style="margin-top:14px;">Composite of FII/DII flow, F&O positioning and advance-decline breadth. Above 60 indicates institutional accumulation outweighing distribution.</div>
+  </div>
+
+  ${secHead('','Market Intelligence')}
+  <div class="tool-grid">
+    ${MARKET_INTEL_LINKS.map(m=>`
+      <div class="tool-card" onclick="navigate('${m.route}')">
+        <span class="tool-ico">${m.ico}</span>
+        <span class="tool-name">${m.name}</span>
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Market Calendar')}
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger"><tbody>
+      <tr><td class="row-idx">01</td><td>28 Aug</td><td>Weekly F&O Expiry</td><td class="pill">Expiry</td></tr>
+      <tr><td class="row-idx">02</td><td>19 Aug</td><td>HDFCBANK Q1 Results</td><td class="pill">Results</td></tr>
+      <tr><td class="row-idx">03</td><td>21 Aug</td><td>Northgate Logistics IPO Opens</td><td class="pill">IPO</td></tr>
+      <tr><td class="row-idx">04</td><td>27 Aug</td><td>Ganesh Chaturthi — Market Holiday</td><td class="pill">Holiday</td></tr>
+    </tbody></table>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: STOCKS =====================
+function renderStocks(){
+  const cats = ['Stocks','ETFs','Large Cap','Mid Cap','Small Cap'];
+  const filtered = STOCKS.filter(s=>{
+    if(STATE.stockTab==='Stocks') return true;
+    if(STATE.stockTab==='ETFs') return s.cap==='ETF';
+    return s.cap===STATE.stockTab;
+  });
+  return `
+  ${pageHead('Stocks','Stock Discovery','Screen the market by cap, sector, price band or LedgerView signal.')}
+  <div class="tabs">
+    ${cats.map(c=>`<div class="tab-btn ${STATE.stockTab===c?'active':''}" onclick="navigate('stocks',{stockTab:'${c}'})">${c}</div>`).join('')}
+  </div>
+  <div class="chiprow">
+    <div class="chip active">Sector: All</div>
+    <div class="chip">Market Cap</div>
+    <div class="chip">Price</div>
+    <div class="chip">% Change</div>
+    <div class="chip">Volume</div>
+    <div class="chip">52W High/Low</div>
+  </div>
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger">
+      <thead><tr><th>#</th><th>Symbol</th><th>Price</th><th>Change</th><th>Volume</th><th>Signal</th></tr></thead>
+      <tbody>
+        ${filtered.map((s,idx)=>`
+          <tr onclick="navigate('stockdetail',{stockSym:'${s.sym}'})" style="cursor:pointer">
+            <td class="row-idx">${String(idx+1).padStart(3,'0')}</td>
+            <td><span class="sym-cell">${s.sym}</span><span class="sym-sub">${s.ex} · ${s.name}</span></td>
+            <td>₹${s.price}</td>
+            <td class="${s.dir}">${s.chg}</td>
+            <td>${s.vol}</td>
+            <td><span class="stamp ${stampClass(s.signal)}">${tr(s.signal)}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: STOCK DETAIL =====================
+function renderStockDetail(){
+  const d = STOCK_DETAIL; // single illustrative deep page regardless of symbol clicked
+  return `
+  <div class="page-head">
+    <div class="eyebrow">04 — Individual Stock</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="page-title">${STATE.stockSym||d.sym}</div>
+      <span class="pill">${d.ex}</span>
+      <span style="font-family:var(--font-mono);font-size:20px;color:var(--paper);">₹${d.price}</span>
+      <span class="${d.dir}" style="font-family:var(--font-mono);">${d.chg} (${d.pct})</span>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;">
+      <button class="chip" onclick="alert('Added to watchlist')">★ Watchlist</button>
+      <button class="chip" onclick="alert('Alert set')">🔔 Set Alert</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    ${d.ranges.map(r=>`<div class="tab-btn ${(STATE.chartRange||'1M')===r?'active':''}" onclick="setChartRange('${r}')">${r}</div>`).join('')}
+  </div>
+  <div class="card chart-card" style="height:260px;padding:0;" onclick="openChartModal('${STATE.stockSym||d.sym}','${STATE.chartRange||'1M'}','${d.price}')">
+    <span class="expand-hint">⤢ Tap to expand</span>
+    <div class="chart-canvas-wrap chart-inline-wrap" id="inlineChartWrap">
+      <canvas class="chart-price-canvas"></canvas>
+      <canvas class="chart-vol-canvas"></canvas>
+      <canvas class="chart-rsi-canvas"></canvas>
+    </div>
+  </div>
+
+  ${secHead('','Key Metrics')}
+  <div class="grid grid-3">
+    ${d.metrics.map(m=>`<div class="card stat-card"><div class="stat-label">${m.label}</div><div class="stat-value" style="font-size:18px;">${m.val}</div></div>`).join('')}
+  </div>
+
+  ${secHead('','LedgerView Signal')}
+  <div class="grid grid-4">
+    ${Object.entries(d.signal).map(([k,v])=>`
+      <div class="card" style="text-align:center;">
+        <div class="badge-score" style="margin:0 auto;">${v}</div>
+        <div class="stat-label" style="margin-top:10px;text-transform:capitalize;">${k}</div>
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Checklist')}
+  <div class="card">
+    ${(()=>{
+      const items = [
+        {label:'ROE above 15%', pass: parseFloat(d.fundamentals.find(f=>f.label==='ROE').val) >= 15},
+        {label:'Debt/Equity under 1', pass: parseFloat(d.fundamentals.find(f=>f.label==='Debt/Equity').val) < 1},
+        {label:'Trading above 20D trend (SMA)', pass: d.signal.technical >= 55},
+        {label:'Institutional accumulation', pass: d.signal.institutional >= 60},
+        {label:'Momentum score healthy', pass: d.signal.momentum >= 55},
+        {label:'Price within 15% of 52W High', pass: true},
+      ];
+      const passCount = items.filter(i=>i.pass).length;
+      return `
+      <div class="list-row" style="border:none;padding-top:0;">
+        <span style="font-size:13px;color:var(--ink-dim);">${tr('Checklist Score')}</span>
+        <span class="stamp ${passCount>=4?'buy':passCount>=2?'hold':'sell'}">${passCount} / ${items.length}</span>
+      </div>
+      <div class="hr-brass"></div>
+      ${items.map(i=>`<div class="list-row"><span style="font-size:13px;">${i.pass?'✅':'❌'} ${i.label}</span></div>`).join('')}
+      `;
+    })()}
+  </div>
+
+  ${secHead('','Research Call')}
+  <div class="card">
+    <div class="list-row" style="border:none;padding-top:0;">
+      <span class="stamp ${stampClass(d.call.action)}" style="font-size:13px;padding:6px 14px;">${tr(d.call.action)}</span>
+      <span class="chip-inline">${d.call.horizon} · ${d.call.risk} risk</span>
+    </div>
+    <div class="hr-brass"></div>
+    <div class="grid grid-4">
+      <div><div class="stat-label">Entry</div><div style="font-family:var(--font-mono);margin-top:4px;">₹${d.call.entry}</div></div>
+      <div><div class="stat-label">Target</div><div style="font-family:var(--font-mono);margin-top:4px;color:var(--bull);">₹${d.call.target}</div></div>
+      <div><div class="stat-label">Stop Loss</div><div style="font-family:var(--font-mono);margin-top:4px;color:var(--bear);">₹${d.call.stop}</div></div>
+      <div><div class="stat-label">Expected Return</div><div style="font-family:var(--font-mono);margin-top:4px;color:var(--brass);">${d.call.ret}</div></div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div>
+      ${secHead('','Fundamentals')}
+      <div class="card grid grid-3" style="gap:14px;">
+        ${d.fundamentals.map(f=>`<div><div class="stat-label">${f.label}</div><div style="font-family:var(--font-mono);margin-top:4px;">${f.val}</div></div>`).join('')}
+      </div>
+
+      ${secHead('','Peer Comparison')}
+      <div class="card" style="padding:0;overflow-x:auto;">
+        <table class="ledger">
+          <thead><tr><th>Symbol</th><th>P/E</th><th>ROE</th><th>M-Cap</th></tr></thead>
+          <tbody>${d.peers.map(p=>`<tr><td class="sym-cell" style="font-family:var(--font-sans);">${p.sym}</td><td>${p.pe}</td><td>${p.roe}</td><td>${p.mcap}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      ${secHead('','FII / DII Holdings')}
+      <div class="card">
+        ${Object.entries(d.fii).map(([k,v])=>`<div class="list-row"><span style="text-transform:capitalize;">${k}</span><span style="font-family:var(--font-mono);">${v}</span></div>`).join('')}
+      </div>
+      ${secHead('','News & Corporate Actions')}
+      <div class="card">
+        ${d.news.map(n=>newsCard(Object.assign({sentiment:'pos'},n))).join('')}
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: F&O =====================
+function renderFO(){
+  const otoggle = STATE.optToggle || 'Index';
+  return `
+  ${pageHead('F&O','Futures & Options','Positioning, open interest and premium across the derivatives ledger.')}
+  <div class="tabs">
+    ${FO_TABS.map(t=>`<div class="tab-btn ${STATE.foTab===t?'active':''}" onclick="navigate('fo',{foTab:'${t}'})">${t}</div>`).join('')}
+  </div>
+
+  ${secHead('','15+ Derivatives Tools')}
+  ${!(PROFILE && PROFILE.pro) ? `<div class="section-note" style="margin-bottom:14px;">🔒 Tools marked PRO unlock free for life once you connect a broker. <a href="javascript:void(0)" onclick="navigate('profile')" style="color:var(--brass);">Connect one →</a></div>` : ''}
+  <div class="tool-grid">
+    ${DERIVATIVE_TOOLS.map(d=>`
+      <div class="tool-card" onclick="navigate('${d.route}')">
+        <span class="tool-ico">${d.ico}</span>
+        <span class="tool-name">${d.name}</span>
+        ${d.pro ? (PROFILE && PROFILE.pro ? `<span class="pro-badge" style="background:var(--bull-soft);color:var(--bull);">✓ UNLOCKED</span>` : `<span class="pro-badge">PRO</span>`) : ''}
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Top Traded Options')}
+  <div class="card">
+    <div class="seg-tabs">
+      <div class="seg-tab ${otoggle==='Index'?'active':''}" onclick="navigate('fo',{optToggle:'Index'})">Index</div>
+      <div class="seg-tab ${otoggle==='Stocks'?'active':''}" onclick="navigate('fo',{optToggle:'Stocks'})">Stocks</div>
+    </div>
+    <div class="chiprow">
+      <div class="chip active">NIFTY 50</div><div class="chip">SENSEX</div><div class="chip">NIFTY BANK</div><div class="chip">FINNIFTY</div>
+    </div>
+    ${TOP_OPTIONS.map(o=>`
+      <div class="opt-row" onclick="navigate('optionchain')" style="cursor:pointer;">
+        <div><div class="opt-name">${o.sym}</div><div class="opt-ex">${o.ex}</div></div>
+        <div><div class="opt-price">${o.price}</div><div class="opt-chg ${o.dir}">${o.chg}</div></div>
+      </div>`).join('')}
+    <a href="javascript:void(0)" onclick="navigate('optionchain');return false;" class="sec-link" style="display:block;margin-top:12px;">Top 100 Traded Contracts →</a>
+  </div>
+
+  ${secHead('','Futures Dashboard')}
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger">
+      <thead><tr><th>Contract</th><th>Expiry</th><th>Price</th><th>OI</th><th>Chg in OI</th><th>Volume</th><th>Premium</th></tr></thead>
+      <tbody>${FUTURES.map(f=>`<tr><td class="sym-cell" style="font-family:var(--font-sans);">${f.sym}</td><td>${f.expiry}</td><td>${f.price}</td><td>${f.oi}</td><td class="${f.chgOi.startsWith('-')?'down':'up'}">${f.chgOi}</td><td>${f.vol}</td><td class="up">${f.premium}</td></tr>`).join('')}</tbody>
+    </table>
+  </div>
+
+  ${secHead('','F&O Intelligence')}
+  <div class="ai-banner"><span class="ai-chip">AI</span> LedgerView Intelligence reads OI shifts, PCR and FII positioning together to flag the sentiment below.</div>
+  <div class="grid grid-4">
+    <div class="card stat-card"><div class="stat-label">PCR</div><div class="stat-value" style="font-size:20px;">${FO_INTEL.pcr}</div></div>
+    <div class="card stat-card"><div class="stat-label">Max Pain</div><div class="stat-value" style="font-size:20px;">${FO_INTEL.maxPain}</div></div>
+    <div class="card stat-card"><div class="stat-label">Highest Call OI</div><div class="stat-value" style="font-size:15px;">${FO_INTEL.callOi}</div></div>
+    <div class="card stat-card"><div class="stat-label">Highest Put OI</div><div class="stat-value" style="font-size:15px;">${FO_INTEL.putOi}</div></div>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <div class="stat-label">FII Futures Positioning</div>
+    <div class="progressbar" style="margin-top:10px;"><div style="width:${FO_INTEL.fiiLong}"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:var(--font-mono);font-size:11px;">
+      <span class="up">Long ${FO_INTEL.fiiLong}</span><span class="down">Short ${FO_INTEL.fiiShort}</span>
+    </div>
+  </div>
+
+  ${secHead('','OI Buildup Classification')}
+  <div class="grid grid-4">
+    ${OI_BUILDUP.map(o=>`
+      <div class="card">
+        <div class="sym-cell">${o.sym}</div>
+        <div class="pill" style="margin-top:8px;">${o.type}</div>
+        <div class="hr-brass"></div>
+        <div style="font-family:var(--font-mono);font-size:11.5px;">OI ${o.oiChg} · Price ${o.priceChg}</div>
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Stock F&O Discovery','Open Option Chain', `navigate('optionchain')`)}
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger"><tbody>
+      ${STOCKS.slice(0,5).map((s,i)=>`<tr onclick="navigate('optionchain')" style="cursor:pointer"><td class="row-idx">${String(i+1).padStart(2,'0')}</td><td class="sym-cell" style="font-family:var(--font-sans);">${s.sym}</td><td>₹${s.price}</td><td class="${s.dir}">${s.chg}</td></tr>`).join('')}
+    </tbody></table>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: OPTION CHAIN =====================
+function renderOptionChain(){
+  const oc = OPTION_CHAIN;
+  return `
+  ${pageHead('Option Chain', oc.underlying + ' Option Chain', 'Spot ₹'+oc.spot+' · Expiry '+oc.expiry)}
+  <div class="chiprow">
+    <div class="chip active">${oc.expiry}</div>
+    <div class="chip">Next Expiry</div>
+    <div class="chip">Monthly</div>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="card stat-card"><div class="stat-label">PCR</div><div class="stat-value" style="font-size:20px;">${oc.pcr}</div></div>
+    <div class="card stat-card"><div class="stat-label">Max Pain</div><div class="stat-value" style="font-size:20px;">${oc.maxPain}</div></div>
+    <div class="card stat-card"><div class="stat-label">Call Wall</div><div class="stat-value" style="font-size:20px;">${oc.callWall}</div></div>
+    <div class="card stat-card"><div class="stat-label">Put Wall</div><div class="stat-value" style="font-size:20px;">${oc.putWall}</div></div>
+  </div>
+  <div class="card" style="margin-top:14px;border-color:var(--brass-soft);">
+    <div class="stat-label">LedgerView Options Sentiment</div>
+    <div style="font-family:var(--font-display);font-size:20px;color:var(--brass);margin-top:6px;">${oc.sentiment}</div>
+    <div class="section-note">Support ₹${oc.support} · Resistance ₹${oc.resistance} — derived from OI concentration and PCR trend.</div>
+  </div>
+
+  ${secHead('','Call / Put Chain')}
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger" style="min-width:640px;">
+      <thead><tr><th>OI</th><th>Chg OI</th><th>LTP</th><th style="text-align:center;color:var(--brass);">Strike</th><th>LTP</th><th>Chg OI</th><th>OI</th></tr></thead>
+      <tbody>
+        ${oc.rows.map(r=>`
+          <tr style="${r.flag==='atm'?'background:var(--card-hi);':''}">
+            <td>${r.cOi}</td><td class="${r.cChg.startsWith('-')?'down':'up'}">${r.cChg}</td><td>${r.cLtp}</td>
+            <td style="text-align:center;font-weight:600;color:${r.flag==='atm'?'var(--brass)':'var(--paper)'};">${r.strike}${r.flag==='atm'?' · ATM':''}</td>
+            <td>${r.pLtp}</td><td class="${r.pChg.startsWith('-')?'down':'up'}">${r.pChg}</td><td>${r.pOi}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  <div class="section-note">Highlighted row marks at-the-money strike. Highest Call OI sits at 25,000 (Call Wall); highest Put OI sits at 24,600 (Put Wall).</div>
+  `;
+}
+
+// ===================== SCREEN: FII/DII =====================
+function renderFiiDii(){
+  return `
+  ${pageHead('FII/DII','Institutional Flows','Cash and futures activity from Foreign and Domestic Institutional Investors.')}
+  <div class="tabs">
+    ${FII_DII.views.map(v=>`<div class="tab-btn ${STATE.fiiView===v?'active':''}" onclick="navigate('fiidii',{fiiView:'${v}'})">${v}</div>`).join('')}
+  </div>
+
+  ${secHead('','Cash Market')}
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger">
+      <thead><tr><th>Date</th><th>FII Buy</th><th>FII Sell</th><th>FII Net</th><th>DII Buy</th><th>DII Sell</th><th>DII Net</th></tr></thead>
+      <tbody>${FII_DII.cash.map(c=>`<tr><td>${c.date}</td><td>${c.fiiBuy}</td><td>${c.fiiSell}</td><td class="${c.fiiNet.startsWith('-')?'down':'up'}">${c.fiiNet}</td><td>${c.diiBuy}</td><td>${c.diiSell}</td><td class="${c.diiNet.startsWith('-')?'down':'up'}">${c.diiNet}</td></tr>`).join('')}</tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div>
+      ${secHead('','Futures Activity')}
+      <div class="card">
+        <div class="list-row"><span>Buy</span><span style="font-family:var(--font-mono);">₹${FII_DII.futures.buy}</span></div>
+        <div class="list-row"><span>Sell</span><span style="font-family:var(--font-mono);">₹${FII_DII.futures.sell}</span></div>
+        <div class="list-row" style="border:none;"><span>Net</span><span class="down" style="font-family:var(--font-mono);">₹${FII_DII.futures.net}</span></div>
+      </div>
+
+      ${secHead('','Institutional Bias')}
+      <div class="grid grid-3">
+        <div class="card" style="text-align:center;"><div class="stat-label">FII</div><div class="down" style="font-family:var(--font-display);font-size:16px;margin-top:6px;">${FII_DII.bias.fii}</div></div>
+        <div class="card" style="text-align:center;"><div class="stat-label">DII</div><div class="up" style="font-family:var(--font-display);font-size:16px;margin-top:6px;">${FII_DII.bias.dii}</div></div>
+        <div class="card" style="text-align:center;"><div class="stat-label">F&O</div><div class="neu" style="font-family:var(--font-display);font-size:16px;margin-top:6px;">${FII_DII.bias.fo}</div></div>
+      </div>
+    </div>
+    <div>
+      ${secHead('','Trend — FII vs DII vs NIFTY')}
+      <div class="card chart-card" style="height:220px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-family:var(--font-mono);font-size:12px;"
+           onclick="openTrendModal()">
+        <span class="expand-hint">⤢ Tap to expand</span>
+        trend chart — 30 session flow vs index
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: RESEARCH =====================
+function renderResearch(){
+  const rtabs = ['Stocks','F&O','ETFs','Market'];
+  return `
+  ${pageHead('Research','Research Desk','Every LedgerView call, published transparently with entry, target, stop loss and rationale.')}
+  <div class="tabs">
+    ${rtabs.map(t=>`<div class="tab-btn ${STATE.researchTab===t?'active':''}" onclick="navigate('research',{researchTab:'${t}'})">${t}</div>`).join('')}
+  </div>
+
+  ${secHead('','Featured Call')}
+  <div class="card" style="border-color:var(--brass-soft);">
+    <div class="list-row" style="border:none;padding-top:0;">
+      <div class="sym-cell" style="font-size:16px;">${RESEARCH_CALL_FEATURED.sym}</div>
+      <span class="stamp ${stampClass(RESEARCH_CALL_FEATURED.action)}">${tr(RESEARCH_CALL_FEATURED.action)}</span>
+    </div>
+    <div class="hr-brass"></div>
+    <div class="grid grid-4">
+      <div><div class="stat-label">Entry</div><div style="font-family:var(--font-mono);margin-top:4px;">₹${RESEARCH_CALL_FEATURED.entry}</div></div>
+      <div><div class="stat-label">Target</div><div style="font-family:var(--font-mono);margin-top:4px;color:var(--bull);">₹${RESEARCH_CALL_FEATURED.target}</div></div>
+      <div><div class="stat-label">Stop Loss</div><div style="font-family:var(--font-mono);margin-top:4px;color:var(--bear);">₹${RESEARCH_CALL_FEATURED.stop}</div></div>
+      <div><div class="stat-label">Expected Return</div><div style="font-family:var(--font-mono);margin-top:4px;color:var(--brass);">${RESEARCH_CALL_FEATURED.ret}</div></div>
+    </div>
+    <div class="section-note">${RESEARCH_CALL_FEATURED.rationale}</div>
+  </div>
+
+  ${secHead('','Categories')}
+  <div class="chiprow">${RESEARCH_CATS.map((c,i)=>`<div class="chip ${i===0?'active':''}">${c}</div>`).join('')}</div>
+
+  ${secHead('','Research Reports')}
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger">
+      <thead><tr><th>Symbol</th><th>Category</th><th>Call</th><th>Published</th><th>Status</th></tr></thead>
+      <tbody>${RESEARCH_REPORTS.map(r=>`
+        <tr onclick="navigate('reportdetail')" style="cursor:pointer">
+          <td class="sym-cell" style="font-family:var(--font-sans);">${r.sym}</td><td>${r.cat}</td>
+          <td><span class="stamp ${stampClass(r.action)}" style="padding:3px 8px;font-size:9px;">${tr(r.action)}</span></td>
+          <td>${r.ts}</td><td><span class="pill">${r.status}</span></td>
+        </tr>`).join('')}</tbody>
+    </table>
+  </div>
+
+  ${secHead('','Research Performance')}
+  <div class="grid grid-3">
+    <div class="card stat-card"><div class="stat-label">Win Rate</div><div class="stat-value up">${RESEARCH_PERF.winRate}</div></div>
+    <div class="card stat-card"><div class="stat-label">Avg. Return / Call</div><div class="stat-value up">${RESEARCH_PERF.avgReturn}</div></div>
+    <div class="card stat-card"><div class="stat-label">Total Calls Tracked</div><div class="stat-value">${RESEARCH_PERF.totalCalls}</div></div>
+  </div>
+  <div class="section-note">${RESEARCH_PERF.methodology}</div>
+  `;
+}
+
+function renderReportDetail(){
+  const r = RESEARCH_REPORTS[0];
+  return `
+  ${pageHead('Report','Detailed Research Report','')}
+  <div class="card">
+    <div class="list-row" style="border:none;padding-top:0;">
+      <div class="sym-cell" style="font-size:16px;">${r.sym} · ${r.cat}</div>
+      <span class="stamp ${stampClass(r.action)}">${tr(r.action)}</span>
+    </div>
+    <div class="hr-brass"></div>
+    ${secHead('','Rationale')}
+    <p style="font-size:13.5px;line-height:1.7;color:var(--ink-dim);">Momentum indicators confirm a breakout above the 20-day moving average on rising volume, while the sector tailwind from recent policy announcements supports continuation. Institutional flow data shows accumulation over the past three sessions.</p>
+    ${secHead('','Technical Factors')}
+    <p style="font-size:13.5px;line-height:1.7;color:var(--ink-dim);">RSI at 61 (bullish, non-overbought), MACD crossover confirmed, price holding above key Fibonacci retracement level.</p>
+    ${secHead('','Fundamental Factors')}
+    <p style="font-size:13.5px;line-height:1.7;color:var(--ink-dim);">Order book visibility improved this quarter; margin expansion expected on operating leverage.</p>
+    ${secHead('','Risks')}
+    <p style="font-size:13.5px;line-height:1.7;color:var(--ink-dim);">Broader market volatility, sector-specific regulatory changes, and a reversal in FII flow could invalidate the thesis before target is reached.</p>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: ACTIVE TRADES =====================
+function renderTrades(){
+  const cats = ['Intraday','Swing','Positional','F&O'];
+  return `
+  ${pageHead('Active Trades','Active Trades','Every open position LedgerView Research is tracking, marked to market.')}
+  <div class="chiprow">${cats.map(c=>`<div class="chip ${STATE.tradesTab===c?'active':''}" onclick="navigate('trades',{tradesTab:'${c}'})">${c}</div>`).join('')}</div>
+
+  ${secHead('','Open Positions')}
+  <div class="grid grid-2">
+    ${ACTIVE_TRADES.map(t=>`
+      <div class="card">
+        <div class="list-row" style="border:none;padding-top:0;">
+          <div><div class="sym-cell">${t.sym}</div><div class="chip-inline" style="margin-top:5px;">${t.type}</div></div>
+          <span class="pill">${t.status}</span>
+        </div>
+        <div class="hr-brass"></div>
+        <div class="grid grid-3" style="gap:8px;">
+          <div><div class="stat-label">Entry</div><div style="font-family:var(--font-mono);font-size:12.5px;margin-top:3px;">₹${t.entry}</div></div>
+          <div><div class="stat-label">CMP</div><div style="font-family:var(--font-mono);font-size:12.5px;margin-top:3px;">₹${t.cmp}</div></div>
+          <div><div class="stat-label">P&L</div><div class="${t.pl.startsWith('-')?'down':'up'}" style="font-family:var(--font-mono);font-size:12.5px;margin-top:3px;">${t.pl}</div></div>
+        </div>
+        <div class="progressbar" style="margin-top:12px;"><div style="width:${t.progress}%;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);">
+          <span>Target ₹${t.target}</span><span>Stop ₹${t.stop}</span>
+        </div>
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Closed Trade History')}
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger">
+      <thead><tr><th>Symbol</th><th>Type</th><th>Entry</th><th>Exit</th><th>Return</th></tr></thead>
+      <tbody>${CLOSED_TRADES.map(t=>`<tr><td class="sym-cell" style="font-family:var(--font-sans);">${t.sym}</td><td>${t.type}</td><td>₹${t.entry}</td><td>₹${t.exit}</td><td class="${t.ret.startsWith('-')?'down':'up'}">${t.ret}</td></tr>`).join('')}</tbody>
+    </table>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: NEWS =====================
+function renderNews(){
+  const rtabs = ['Watchlist','News','CA','Trending'];
+  return `
+  ${pageHead('News','Newsroom','Market-moving headlines, filtered by what matters to your portfolio.')}
+  <div class="tabs">${rtabs.map(t=>`<div class="tab-btn ${t==='News'?'active':''}">${t}</div>`).join('')}</div>
+  <div class="search-wrap" style="max-width:100%;margin-bottom:14px;"><span class="ico">⌕</span><input placeholder="Search for companies to invest or trade"></div>
+  <div class="ai-banner"><span class="ai-chip">AI</span> 24x7 market news, now cross-read and scored by LedgerView Intelligence.</div>
+  <div class="chiprow">${NEWS_TABS.map((t,i)=>`<div class="chip ${STATE.newsTab===t?'active':''}" onclick="navigate('news',{newsTab:'${t}'})">${t}</div>`).join('')}</div>
+
+  <div class="card" style="border-color:var(--bear-soft);background:var(--bear-soft);margin-bottom:18px;">
+    <div class="stat-label" style="color:var(--bear);">● Breaking</div>
+    <div style="font-size:14px;margin-top:6px;">FIIs turn net sellers for third straight session as VIX cools off</div>
+  </div>
+
+  <div class="card">
+    ${NEWS.map(newsCard).join('')}
+  </div>
+
+  ${secHead('','Stock-Specific Filters')}
+  <div class="chiprow">
+    <div class="chip active">Latest</div><div class="chip">Results</div><div class="chip">Corporate</div><div class="chip">Analyst</div><div class="chip">Industry</div>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: WATCHLIST =====================
+function renderWatchlist(){
+  const names = Object.keys(WATCHLISTS);
+  const active = names.includes(STATE.watchlistTab) ? STATE.watchlistTab : names[0];
+  const rows = WATCHLISTS[active] || [];
+  return `
+  ${pageHead('Watchlist','Watchlists','Track the symbols you care about across strategies. Saved to your LedgerView profile.')}
+  <div class="tabs">
+    ${names.map(n=>`<div class="tab-btn ${active===n?'active':''}" onclick="navigate('watchlist',{watchlistTab:'${n}'})">${n}</div>`).join('')}
+  </div>
+
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="ledger">
+      <thead><tr><th>Symbol</th><th>Price</th><th>Change</th><th>Signal</th><th>Target</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map(r=>`
+        <tr>
+          <td class="sym-cell" style="font-family:var(--font-sans);cursor:pointer;" onclick="navigate('stockdetail',{stockSym:'${r.sym}'})">${r.sym}</td>
+          <td>₹${r.price}</td><td class="${r.dir}">${r.chg}</td>
+          <td><span class="stamp ${stampClass(r.signal)}" style="padding:3px 8px;font-size:9px;">${tr(r.signal)}</span></td>
+          <td>${r.target?'₹'+r.target:'—'}</td>
+          <td><a href="javascript:void(0)" style="color:var(--bear);font-family:var(--font-mono);font-size:11px;" onclick="removeFromWatchlist('${active}','${r.sym}')">✕</a></td>
+        </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);padding:24px;">Empty — add a symbol below.</td></tr>`}</tbody>
+    </table>
+  </div>
+
+  <div class="chiprow" style="margin-top:16px;">
+    <input id="addSymInput" placeholder="Add symbol e.g. RELIANCE" style="background:var(--bg-elev);border:1px solid var(--rule-hair);border-radius:20px;padding:8px 14px;color:var(--ink);font-family:var(--font-mono);font-size:12px;outline:none;" onkeydown="if(event.key==='Enter')addToWatchlist('${active}')">
+    <button class="chip" onclick="addToWatchlist('${active}')">+ Add Symbol</button>
+    <button class="chip" onclick="createWatchlist()">+ Create Watchlist</button>
+    ${names.length>1 ? `<button class="chip" style="color:var(--bear);" onclick="deleteWatchlist('${active}')">🗑 Delete "${active}"</button>` : ''}
+  </div>
+  `;
+}
+
+// ===================== SCREEN: PROFILE =====================
+function renderProfile(){
+  const name = PROFILE ? PROFILE.name : 'Rohan Agarwal';
+  const phone = PROFILE ? PROFILE.phone : '';
+  return `
+  ${pageHead('Profile', name, phone ? `Signed in with ${phone} · Account, subscription and everything saved to My LedgerView.` : 'Account, subscription and everything saved to My LedgerView.')}
+  <div class="split">
+    <div>
+      ${secHead('','My LedgerView')}
+      <div class="card">
+        <div class="list-row" style="cursor:pointer;" onclick="navigate('watchlist')"><span>★ Watchlists</span><span>→</span></div>
+        <div class="list-row" style="cursor:pointer;" onclick="navigate('research')"><span>✎ Saved Research</span><span>→</span></div>
+        <div class="list-row" style="cursor:pointer;" onclick="navigate('alerts')"><span>🔔 Alerts</span><span>→</span></div>
+        <div class="list-row" style="border:none;cursor:pointer;" onclick="navigate('trades')"><span>◷ Active Trades</span><span>→</span></div>
+      </div>
+
+      ${secHead('','Reports')}
+      <div class="card">
+        <div class="list-row"><span>Research Reports</span><span>→</span></div>
+        <div class="list-row"><span>Trade History</span><span>→</span></div>
+        <div class="list-row"><span>Performance Summary</span><span>→</span></div>
+        <div class="list-row" style="border:none;"><span>Downloads</span><span>→</span></div>
+      </div>
+    </div>
+    <div>
+      ${secHead('','Account')}
+      <div class="card">
+        <div class="list-row"><span>Personal Information</span><span>→</span></div>
+        <div class="list-row"><span>Subscription</span><span class="pill">Pro Annual</span></div>
+        <div class="list-row"><span>Billing</span><span>→</span></div>
+        <div class="list-row" style="border:none;"><span>Security</span><span>→</span></div>
+      </div>
+
+      ${secHead('','Settings','Open Settings', `navigate('settings')`)}
+      <div class="card">
+        <div class="list-row"><span>Appearance</span><span class="chip-inline">Ledger Dark</span></div>
+        <div class="list-row"><span>Notifications</span><span>→</span></div>
+        <div class="list-row"><span>Language</span><span class="chip-inline">English</span></div>
+        <div class="list-row" style="border:none;"><span>Data Preferences</span><span>→</span></div>
+      </div>
+
+      ${secHead('','Connect a Broker — Unlock Pro Free')}
+      <div class="card" style="${PROFILE && PROFILE.pro ? 'border-color:var(--bull);' : 'border-color:var(--brass-soft);'}">
+        ${PROFILE && PROFILE.pro ? `
+          <div class="list-row" style="border:none;padding-top:0;">
+            <span style="font-size:14px;color:var(--paper);font-weight:600;">✅ LedgerView Pro — Lifetime Free</span>
+            <span class="pill">${PROFILE.connectedBroker}</span>
+          </div>
+          <div class="section-note">Linked via ${PROFILE.connectedBroker} on ${PROFILE.proSince||''}. All PRO-tagged tools across the app are unlocked.</div>
+        ` : `
+          <div class="stat-label" style="margin-bottom:10px;">Connect any one broker to unlock every PRO-tagged tool in LedgerView, free for life.</div>
+          <div class="broker-row">
+            ${BROKERS.map(b=>`<a class="broker-chip" href="javascript:void(0)" onclick="connectBroker('${b.name}','${b.url}')">${b.ico} ${b.name}</a>`).join('')}
+          </div>
+          <div class="section-note">Tapping a broker opens their real site in a new tab to log in. When you come back, confirm the link and Pro unlocks immediately — no payment, no card. LedgerView is a research platform, not a broker: your trades still execute on the broker's own app; this link is for reference/sync only, and the "connected" state here is a local confirmation (this prototype has no real OAuth token exchange with any broker).</div>
+        `}
+      </div>
+
+      ${secHead('','Support & Legal')}
+      <div class="card">
+        <div class="list-row"><span>Help Centre</span><span>→</span></div>
+        <div class="list-row"><span>Contact / Feedback</span><span>→</span></div>
+        <div class="list-row"><span>Terms · Privacy · Risk Disclosure</span><span>→</span></div>
+        <div class="list-row" style="border:none;"><span>SEBI Registration · Grievance Redressal</span><span>→</span></div>
+      </div>
+
+      ${secHead('','Support Channel')}
+      <div class="card">
+        <a class="list-row link-row" href="mailto:LedgerViewin@gmail.com">
+          <span class="social-row"><span class="social-badge mail">${ICO_MAIL}</span>Email</span>
+          <span class="link-val">LedgerViewin@gmail.com</span>
+        </a>
+        <a class="list-row link-row" href="https://www.instagram.com/ledgerview" target="_blank" rel="noopener noreferrer">
+          <span class="social-row"><span class="social-badge insta">${ICO_INSTAGRAM}</span>Instagram</span>
+          <span class="link-val">@ledgerview</span>
+        </a>
+        <a class="list-row link-row" href="https://www.linkedin.com/company/ledgerviewin/" target="_blank" rel="noopener noreferrer" style="border:none;">
+          <span class="social-row"><span class="social-badge linkedin">${ICO_LINKEDIN}</span>LinkedIn</span>
+          <span class="link-val">/company/ledgerviewin</span>
+        </a>
+      </div>
+
+      <button class="chip" style="margin-top:16px;color:var(--bear);" onclick="if(confirm('Log out of LedgerView?'))logOut();">⎋ Log Out</button>
+    </div>
+  </div>
+  `;
+}
+function renderSettings(){
+  const url = BACKEND_URL || '';
+  return `
+  ${pageHead('Settings','Settings','')}
+  <div class="card">
+    <div class="list-row"><span>Appearance</span><span class="pill">Ledger Dark</span></div>
+    <div class="list-row"><span>Notifications</span><span>→</span></div>
+    <div class="list-row"><span>Language</span><span class="pill">English</span></div>
+    <div class="list-row" style="border:none;"><span>Data Preferences</span><span>→</span></div>
+  </div>
+
+  ${secHead('','Backend Connection')}
+  <div class="card">
+    <div class="stat-label" style="margin-bottom:8px;">LedgerView Backend URL</div>
+    <div class="ai-input-row">
+      <input id="backendUrlInput" placeholder="https://your-backend.example.com" value="${url}">
+      <button class="ai-generate-btn" onclick="saveBackendUrl()">Save</button>
+    </div>
+    <div id="backendStatusNote" class="section-note">
+      ${url ? `Configured: ${url} — indices and watchlists will use your real MongoDB + Angel One backend when reachable, and fall back to the built-in simulation otherwise.` : 'Not configured. The app runs entirely on its built-in simulation + AI web-search fetch. Point this at your own deployed backend (see the ledgerview-backend README) to pull real Angel One quotes and store watchlists in your own MongoDB Atlas instead.'}
+    </div>
+    <button class="chip" onclick="testBackendConnection()">Test Connection</button>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: SEARCH =====================
+function renderSearchScreen(){
+  return `
+  ${pageHead('Search','Global Search','Search across Stocks, Indices, F&O, Options, ETFs, News and Research.')}
+  <div class="search-wrap" style="max-width:100%;margin-bottom:20px;"><span class="ico">⌕</span><input placeholder="Try “HDFCBANK”, “Nifty Max Pain”, or “IPO”" autofocus></div>
+  ${secHead('','Stocks')}
+  <div class="card" style="padding:0;overflow-x:auto;"><table class="ledger"><tbody>${STOCKS.slice(0,3).map(moveRow).join('')}</tbody></table></div>
+  ${secHead('','News')}
+  <div class="card">${NEWS.slice(0,2).map(newsCard).join('')}</div>
+  ${secHead('','Research')}
+  <div class="card">${RESEARCH_REPORTS.slice(0,2).map(r=>`<div class="list-row"><span>${r.sym} · ${r.cat}</span><span class="stamp ${stampClass(r.action)}" style="padding:3px 8px;font-size:9px;">${tr(r.action)}</span></div>`).join('')}</div>
+  `;
+}
+
+// ===================== SCREEN: ALERTS =====================
+function renderAlerts(){
+  return `
+  ${pageHead('Alerts','Notification Centre','Price triggers, new research, index events and breaking news.')}
+  <div class="chiprow">
+    <div class="chip active">All</div><div class="chip">Price Alerts</div><div class="chip">% Movement</div><div class="chip">Volume</div><div class="chip">52-Week</div><div class="chip">Research</div>
+  </div>
+  <div class="card">
+    ${NOTIFICATIONS.map(n=>`<div class="news-card"><div class="news-thumb">🔔</div><div><div class="news-meta">${n.meta}</div><div class="news-title">${n.t}</div></div></div>`).join('')}
+  </div>
+  ${secHead('','Create Alert')}
+  <div class="card">
+    <div class="chiprow" style="margin-bottom:0;">
+      <div class="chip">Price Alert</div><div class="chip">% Movement</div><div class="chip">Volume</div><div class="chip">52-Week Level</div><div class="chip">Research Alert</div>
+    </div>
+  </div>
+  `;
+}
+
+// ===================== SCREEN: INTELLIGENCE (AI) =====================
+function renderIntelligence(){
+  const hist = STATE.aiChat || [];
+  return `
+  ${pageHead('LedgerView Intelligence','Ask the Ledger','An AI-powered market assistant for questions on markets, stocks, FII/DII and the option chain.')}
+  <div class="card" style="border-color:var(--brass-soft);">
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div class="badge-score" style="border-color:var(--brass);">✦</div>
+      <div style="font-size:13.5px;line-height:1.7;color:var(--ink-dim);">
+        Ask me about today's market, a specific stock, FII/DII activity, or what the option chain is signalling. I can search the live web for current answers.
+        <div class="section-note" style="margin-top:12px;">AI-generated answers are informational only and are clearly distinguished from formal LedgerView Research calls.</div>
+      </div>
+    </div>
+  </div>
+
+  ${hist.length ? `
+  ${secHead('','Conversation')}
+  <div class="card" id="aiChatLog">
+    ${hist.map(m=>`
+      <div style="margin-bottom:16px;">
+        <div class="stat-label" style="margin-bottom:5px;">${m.role==='user'?tr('You'):tr('LedgerView Intelligence')}</div>
+        <div style="font-size:13.5px;line-height:1.7;color:${m.role==='user'?'var(--paper)':'var(--ink-dim)'};white-space:pre-wrap;">${m.text}</div>
+      </div>`).join('')}
+  </div>` : ''}
+
+  <div id="aiStatus" class="section-note" style="display:none;margin-bottom:14px;"></div>
+
+  ${secHead('','Suggested Prompts')}
+  <div class="chiprow">${AI_PROMPTS.map(p=>`<div class="chip" onclick="askLedgerViewAI('${p}')">${p}</div>`).join('')}</div>
+  <div class="ai-input-row" style="margin-top:10px;">
+    <input id="aiChatInput" placeholder="Type your question…" onkeydown="if(event.key==='Enter'){askLedgerViewAI(document.getElementById('aiChatInput').value);}">
+    <button class="ai-generate-btn" onclick="askLedgerViewAI(document.getElementById('aiChatInput').value)">${tr('Ask')} ✦</button>
+  </div>
+  `;
+}
+async function askLedgerViewAI(question){
+  question = (question||'').trim();
+  if(!question) return;
+  STATE.aiChat = STATE.aiChat || [];
+  STATE.aiChat.push({role:'user', text:question});
+  const wantHindi = STATE.lang === 'hi';
+  render();
+  const statusEl = document.getElementById('aiStatus');
+  if(statusEl){ statusEl.style.display='block'; statusEl.textContent = 'LedgerView Intelligence is researching…'; }
+
+  const marketContext = `Live app context — NIFTY 50 ${TICKER.find(t=>t.name==='NIFTY 50').val} (${TICKER.find(t=>t.name==='NIFTY 50').chg}), SENSEX ${TICKER.find(t=>t.name==='SENSEX').val}, BANK NIFTY ${TICKER.find(t=>t.name==='BANK NIFTY').val}. Market status: ${marketStatusLabel().text}.`;
+
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        system:`You are LedgerView Intelligence, the AI market assistant inside the LedgerView app (an Indian equities/derivatives research platform). Answer the user's market question directly and concisely, using web search for anything time-sensitive so the answer reflects real current information. Clearly separate factual/live-data answers from any opinion. Never present your answer as an official LedgerView Research call — that is a distinct human/analyst-reviewed product. ${wantHindi ? 'Respond in Hindi (Devanagari script).' : 'Respond in English.'} ${marketContext}`,
+        messages:[{role:'user', content:question}],
+        tools:[{type:'web_search_20250305', name:'web_search'}],
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[])
+      .map(b=> b.type==='text' ? b.text : '')
+      .filter(Boolean).join('\n\n') || 'No response received.';
+    STATE.aiChat.push({role:'assistant', text});
+  }catch(err){
+    STATE.aiChat.push({role:'assistant', text: (STATE.lang==='hi' ? 'क्षमा करें, अभी उत्तर नहीं मिल सका। कृपया पुनः प्रयास करें। ' : "Sorry, I couldn't reach LedgerView Intelligence just now. Please try again. ") + '(' + (err && err.message ? err.message : 'network error') + ')'});
+  }
+  const inputEl = document.getElementById('aiChatInput');
+  if(inputEl) inputEl.value = '';
+  render();
+}
+
+// ===================== ADDITIONAL MODULES =====================
+function renderLiveMarkets(){
+  const s = LIVE_FETCH_STATE;
+  const ms = marketStatusLabel();
+  const rows = TICKER; // already exactly the 10 tracked instruments
+
+  let lastUpdatedText = tr('Not fetched yet this session');
+  if(s.lastUpdated){
+    const hh = String(s.lastUpdated.getHours()).padStart(2,'0');
+    const mm = String(s.lastUpdated.getMinutes()).padStart(2,'0');
+    const ss = String(s.lastUpdated.getSeconds()).padStart(2,'0');
+    lastUpdatedText = `${hh}:${mm}:${ss} IST`;
+  }
+  const sourceLabel = s.source === 'angelone'
+    ? '🟢 Your backend (MongoDB + Angel One SmartAPI)'
+    : s.source === 'websearch'
+      ? '🔵 AI web search (Google Finance / Moneycontrol / Bloomberg)'
+      : '—';
+
+  return `
+  ${pageHead('Live Markets','Live Markets','Real levels, refreshed automatically every minute while the Indian market is open.')}
+
+  <div class="status-dot-row"><span class="dot ${ms.open?'live':''}"></span>${ms.text}</div>
+
+  <div class="card" style="border-color:var(--brass-soft);margin-bottom:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div class="stat-label">${tr('Last live fetch')}</div>
+        <div style="font-family:var(--font-mono);font-size:15px;color:var(--paper);margin-top:4px;">
+          ${s.status==='loading' ? tr('Fetching live data…') : lastUpdatedText}
+        </div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:6px;">${sourceLabel}</div>
+      </div>
+      <button class="ai-generate-btn" onclick="fetchRealLiveMarketData()" ${s.status==='loading'?'disabled':''}>
+        ↻ ${s.status==='loading' ? tr('Fetching…') : tr('Refresh Now')}
+      </button>
+    </div>
+    <div class="section-note">
+      ${BACKEND_URL ? `Your backend is configured (${BACKEND_URL}) — indices are fetched from it first (real Angel One SmartAPI data) and only fall back to AI web search if it's unreachable.` : `No backend configured — sourced via AI web search (Google Finance / Moneycontrol / Bloomberg) each refresh. Set a backend URL in Settings to use your real Angel One + MongoDB integration instead.`}
+      Auto-refreshes every minute Mon–Fri, 09:15–15:30 IST (NSE hours). Outside those hours it holds the last fetched values.
+    </div>
+  </div>
+
+  ${secHead('','Index Levels')}
+  <div class="card" style="padding:0;">
+    <table class="ledger">
+      <thead><tr><th>${tr('Instrument')}</th><th>${tr('Level')}</th><th>${tr('Change')}</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>`
+          <tr style="cursor:pointer;" onclick="openIndexChart('${r.name}','${r.val}')">
+            <td class="sym-cell" style="font-family:var(--font-sans);">${r.name}</td>
+            <td style="font-size:15px;">${r.val}</td>
+            <td class="${r.dir}">${r.dir==='up'?'▲':'▼'} ${r.chg}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  ${secHead('','Cross-Reference')}
+  <div class="card">
+    <a class="list-row link-row" href="https://www.bloomberg.com/markets" target="_blank" rel="noopener noreferrer">
+      <span class="social-row"><span class="social-badge" style="background:#000;font-size:11px;font-weight:800;">B</span>${tr('Bloomberg Markets')}</span>
+      <span class="link-val">bloomberg.com/markets ↗</span>
+    </a>
+    <a class="list-row link-row" href="https://www.nseindia.com/market-data/live-market-indices" target="_blank" rel="noopener noreferrer" style="border:none;">
+      <span class="social-row"><span class="social-badge" style="background:#1b3a6b;font-size:10px;font-weight:800;">NSE</span>${tr('NSE Live Indices')}</span>
+      <span class="link-val">nseindia.com ↗</span>
+    </a>
+    <div class="section-note">${tr('Opens the official site in a new tab for independent, exchange-sourced confirmation of the levels above.')}</div>
+  </div>
+  `;
+}
+
+function renderGlobal(){
+  return `${pageHead('Global Markets','Global Markets','')}
+  <div class="card" style="padding:0;overflow-x:auto;"><table class="ledger">
+    <thead><tr><th>Index</th><th>Value</th><th>Change</th></tr></thead>
+    <tbody>${GLOBAL_MARKETS.map(g=>`<tr style="cursor:pointer;" onclick="openIndexChart('${g.name}','${g.val}')"><td class="sym-cell" style="font-family:var(--font-sans);">${g.name}</td><td>${g.val}</td><td class="${g.dir}">${g.chg}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+}
+function renderCommodities(){
+  const mcx = mcxCommodityStatus();
+  return `${pageHead('Commodities','Commodities','')}
+  <div class="status-dot-row"><span class="dot ${mcx.open?'live':''}"></span>MCX ${mcx.open?'Open':'Closed'} · 09:00–23:30 IST</div>
+  <div class="grid grid-4">${COMMODITIES.map(c=>`<div class="card stat-card"><div class="stat-label">${c.name}</div><div class="stat-value" style="font-size:17px;">${c.val}</div><div class="stat-chg ${c.dir}">${c.chg}</div></div>`).join('')}</div>`;
+}
+function renderIPO(){
+  const tabs=['Open','Upcoming','Closed','Listed'];
+  return `${pageHead('IPO Centre','IPO Centre','')}
+  <div class="tabs">${tabs.map((t,i)=>`<div class="tab-btn ${i===0?'active':''}">${t}</div>`).join('')}</div>
+  <div class="grid grid-2">
+  ${IPOS.map(i=>`
+    <div class="card">
+      <div class="list-row" style="border:none;padding-top:0;"><span class="sym-cell">${i.name}</span><span class="pill">${i.status}</span></div>
+      <div class="hr-brass"></div>
+      <div class="grid grid-3" style="gap:10px;">
+        <div><div class="stat-label">Price Band</div><div style="font-family:var(--font-mono);font-size:12px;margin-top:3px;">${i.band}</div></div>
+        <div><div class="stat-label">Issue Size</div><div style="font-family:var(--font-mono);font-size:12px;margin-top:3px;">${i.size}</div></div>
+        <div><div class="stat-label">Subscription</div><div style="font-family:var(--font-mono);font-size:12px;margin-top:3px;">${i.sub}</div></div>
+      </div>
+      <div class="section-note">${i.dates}</div>
+    </div>`).join('')}
+  </div>`;
+}
+function renderScreener(){
+  return `${pageHead('Screener','AI Screener','Build any scan in plain English, or filter the market manually.')}
+
+  ${secHead('','AI Custom Scanner')}
+  <div class="ai-scan-box">
+    <div class="ai-magic-label"><span class="dot"></span>AI MAGIC FILTER</div>
+    <div class="ai-input-row">
+      <input id="aiFilterInput" placeholder='"RSI Above Overbought"' value="RSI Above Overbought">
+      <button class="ai-generate-btn" onclick="runAiFilter()">✦ Generate</button>
+    </div>
+    <div class="ai-condition-box" id="aiConditionBox">RSI(14) &gt; 70</div>
+    <div class="ai-action-row">
+      <button class="ai-action-btn primary" onclick="alert('Running scan against the live universe…')">▶ Run</button>
+      <button class="ai-action-btn" onclick="alert('Scan saved to My LedgerView')">💾 Save</button>
+      <button class="ai-action-btn" onclick="navigate('alerts')">🔔 Alert</button>
+      <button class="ai-action-btn" onclick="alert('Backtesting against 3Y of history…')">📊 Backtest</button>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:14px;">
+    <div class="card"><div style="font-size:13.5px;font-weight:600;color:var(--paper);">🤖 AI Builder</div><div class="stat-label" style="margin-top:6px;">Plain English → conditions</div></div>
+    <div class="card"><div style="font-size:13.5px;font-weight:600;color:var(--paper);">💾 Save & Reuse</div><div class="stat-label" style="margin-top:6px;">Unlimited custom scans</div></div>
+    <div class="card"><div style="font-size:13.5px;font-weight:600;color:var(--paper);">🔔 Push Alerts</div><div class="stat-label" style="margin-top:6px;">Real-time notifications</div></div>
+    <div class="card"><div style="font-size:13.5px;font-weight:600;color:var(--paper);">📊 Backtest</div><div class="stat-label" style="margin-top:6px;">Test on historical data</div></div>
+    <div class="card" style="grid-column:1/-1;"><div style="font-size:13.5px;font-weight:600;color:var(--paper);">🎯 Multi-Condition</div><div class="stat-label" style="margin-top:6px;">Combine any technical, fundamental or institutional factor</div></div>
+  </div>
+
+  ${secHead('','Manual Filters')}
+  <div class="chiprow">${SCREENER_FIELDS.map(f=>`<div class="chip">${f}</div>`).join('')}</div>
+  <div class="card" style="padding:0;overflow-x:auto;"><table class="ledger"><tbody>${STOCKS.map(moveRow).join('')}</tbody></table></div>`;
+}
+function runAiFilter(){
+  const v = (document.getElementById('aiFilterInput').value||'').toLowerCase();
+  const box = document.getElementById('aiConditionBox');
+  if(v.includes('oversold')) box.textContent = 'RSI(14) < 30';
+  else if(v.includes('volume')) box.textContent = 'Volume > 20D Avg Volume × 2';
+  else if(v.includes('breakout')) box.textContent = 'Close > 20D High';
+  else box.textContent = 'RSI(14) > 70';
+}
+
+// ===================== ROUTER =====================
+const ROUTES = {
+  home: renderHome,
+  livemarkets: renderLiveMarkets,
+  markets: renderMarkets,
+  stocks: renderStocks,
+  stockdetail: renderStockDetail,
+  fo: renderFO,
+  optionchain: renderOptionChain,
+  fiidii: renderFiiDii,
+  research: renderResearch,
+  reportdetail: renderReportDetail,
+  trades: renderTrades,
+  news: renderNews,
+  watchlist: renderWatchlist,
+  profile: renderProfile,
+  settings: renderSettings,
+  search: renderSearchScreen,
+  alerts: renderAlerts,
+  intelligence: renderIntelligence,
+  global: renderGlobal,
+  commodities: renderCommodities,
+  ipo: renderIPO,
+  screener: renderScreener,
+};
+
+function render(){
+  renderShell();
+  const fn = ROUTES[STATE.route] || renderHome;
+  document.getElementById('content').innerHTML = fn();
+  translateTree(document.getElementById('content'));
+  if(STATE.route === 'stockdetail'){
+    const base = parseBase(STOCK_DETAIL.price);
+    const sym = STATE.stockSym || STOCK_DETAIL.sym;
+    const range = STATE.chartRange || '1M';
+    requestAnimationFrame(()=>drawCandleChart('inlineChartWrap', base, 'inline:'+sym+':'+range));
+  }
+}
+
+document.getElementById('globalSearch').addEventListener('focus', ()=>navigate('search'));
+
+// ===================== SIMULATED LIVE MARKET DATA =====================
+// Prototype only — jitters mock figures on a timer to feel "live".
+// A production build would replace this with a licensed real-time feed
+// (e.g. broker WebSocket / exchange market-data API) pushing real ticks.
+function jitterPrice(priceStr, pct){
+  const num = parseFloat(priceStr.replace(/,/g,''));
+  if(isNaN(num)) return priceStr;
+  const delta = num * (Math.random()-0.5) * pct;
+  const next = Math.max(0.05, num + delta);
+  return next >= 1000 ? next.toLocaleString('en-IN',{maximumFractionDigits:2}) : next.toFixed(2);
+}
+function jitterChip(chgStr, dir){
+  const num = parseFloat(chgStr.replace(/[^0-9.-]/g,'')) || 0;
+  const next = num + (Math.random()-0.5)*0.06;
+  const sign = next>=0 ? '+' : '';
+  return {chg:`${sign}${next.toFixed(2)}%`, dir: next>=0?'up':'down'};
+}
+// ===================== REAL LIVE DATA FETCH (via web search) =====================
+// Pulls actual current index levels from the live web using the same AI
+// connection that powers the LedgerView Intelligence assistant. This is
+// genuine sourced data (refreshed periodically), not simulation — but it's
+// still not exchange-grade tick-by-tick streaming, which needs a licensed
+// NSE/BSE data feed or broker API wired through a secure backend (a static
+// page can't hold API keys safely or hold a streaming session open).
+let LIVE_FETCH_STATE = {status:'idle', lastUpdated:null}; // idle | loading | ok | error
+
+async function fetchRealLiveMarketData(){
+  if(!PROFILE) return;
+  if(LIVE_FETCH_STATE.status === 'loading') return;
+  LIVE_FETCH_STATE.status = 'loading';
+  renderShell();
+
+  // Prefer your own real backend (MongoDB Atlas + Angel One SmartAPI) when
+  // configured in Settings — genuine broker-sourced data, not AI web search.
+  const gotRealBackendData = await fetchIndicesFromBackend();
+  if(gotRealBackendData){
+    LIVE_FETCH_STATE.status = 'ok';
+    LIVE_FETCH_STATE.source = 'angelone';
+    LIVE_FETCH_STATE.lastUpdated = getIST();
+    render();
+    return;
+  }
+  LIVE_FETCH_STATE.source = 'websearch';
+
+  const stockBatch = STOCKS.filter(s=>s.cap==='Large Cap').slice(0,20).map(s=>s.sym);
+
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1800,
+        system:'You are a data-fetch tool for LedgerView, an Indian stock-market research platform (NOT a broker — no trade execution). Find current live market levels using web search, prioritising Google Finance, Moneycontrol, and Bloomberg as sources (in that order of preference; fall back to another reputable financial source only if none of those have the quote). Return ONLY a JSON object — no preamble, no markdown fences, no commentary.',
+        messages:[{role:'user', content:`Search the web right now for current levels. Return strictly this JSON shape and nothing else:
+{"indices":{
+  "NIFTY 50":{"val":"24,366.00","chg":"-0.12%","dir":"down"},
+  "SENSEX":{"val":"...","chg":"...","dir":"up|down"},
+  "BANK NIFTY":{"val":"...","chg":"...","dir":"up|down"},
+  "GIFT NIFTY":{"val":"...","chg":"...","dir":"up|down"},
+  "DOW JONES":{"val":"...","chg":"...","dir":"up|down"},
+  "NIKKEI 225":{"val":"...","chg":"...","dir":"up|down"},
+  "CRUDE OIL":{"val":"$79.40","chg":"...","dir":"up|down"},
+  "GOLD":{"val":"₹71,240","chg":"...","dir":"up|down"},
+  "SILVER":{"val":"₹84,120","chg":"...","dir":"up|down"},
+  "NATURAL GAS":{"val":"$2.18","chg":"...","dir":"up|down"}
+},
+"stocks":{
+  ${stockBatch.map(s=>`"${s}":{"price":"...","chg":"...","dir":"up|down"}`).join(',\n  ')}
+}}
+NIFTY 50/SENSEX/BANK NIFTY/GIFT NIFTY are NSE/BSE India index levels. GOLD/SILVER should be Indian domestic prices (MCX/per 10g and per kg respectively) in ₹. CRUDE OIL and NATURAL GAS can be international benchmark levels in $. All "stocks" entries are NSE-listed Indian equities — use their current NSE trading price in ₹.`}],
+        tools:[{type:'web_search_20250305', name:'web_search'}],
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).map(b=> b.type==='text' ? b.text : '').filter(Boolean).join('');
+    const clean = text.replace(/```json|```/g,'').trim();
+    const jsonStart = clean.indexOf('{');
+    const jsonEnd = clean.lastIndexOf('}');
+    const parsed = JSON.parse(clean.slice(jsonStart, jsonEnd+1));
+
+    if(parsed.indices){
+      Object.entries(parsed.indices).forEach(([name, v])=>{
+        const t = TICKER.find(x=>x.name===name);
+        if(t && v && v.val){ t.val = v.val; t.chg = v.chg || t.chg; t.dir = v.dir || t.dir; }
+        if(TICKER_NSE_EQUITY.includes(name)){
+          const idx = INDICES.find(x=>x.name===name);
+          if(idx && v && v.val){ idx.val = v.val; idx.pct = v.chg || idx.pct; idx.dir = v.dir || idx.dir; }
+        }
+        const commodityMap = {'CRUDE OIL':'Crude Oil','GOLD':'Gold','SILVER':'Silver','NATURAL GAS':'Natural Gas'};
+        if(commodityMap[name]){
+          const c = COMMODITIES.find(x=>x.name===commodityMap[name]);
+          if(c && v && v.val){ c.val = v.val; c.chg = v.chg || c.chg; c.dir = v.dir || c.dir; }
+        }
+      });
+    }
+    if(parsed.stocks){
+      Object.entries(parsed.stocks).forEach(([sym, v])=>{
+        const s = STOCKS.find(x=>x.sym===sym);
+        if(s && v && v.price){ s.price = v.price; s.chg = v.chg || s.chg; s.dir = v.dir || s.dir; }
+      });
+    }
+    LIVE_FETCH_STATE.status = 'ok';
+    LIVE_FETCH_STATE.lastUpdated = getIST();
+  }catch(err){
+    LIVE_FETCH_STATE.status = 'error';
+    console.error('Live data fetch failed:', err);
+  }
+  render();
+}
+setInterval(()=>{
+  if(nseEquityStatus().open) fetchRealLiveMarketData();
+}, 60*1000); // re-fetch real data every minute while the Indian market is open
+
+function tickLiveData(){
+  if(!PROFILE) return;
+  const equityOpen = nseEquityStatus().open;
+  const commodityOpen = mcxCommodityStatus().open;
+
+  TICKER.forEach(t=>{
+    const isEquity = TICKER_NSE_EQUITY.includes(t.name);
+    const isCommodity = TICKER_COMMODITY.includes(t.name);
+    if(isEquity && !equityOpen) return;          // NSE cash closed — freeze
+    if(isCommodity && !commodityOpen) return;      // MCX closed — freeze
+    const vol = isEquity ? 0.0006 : isCommodity ? 0.0009 : 0.0002; // GIFT NIFTY/DOW/NIKKEI drift lightly, always
+    t.val = jitterPrice(t.val, vol); const c = jitterChip(t.chg,t.dir); t.chg=c.chg; t.dir=c.dir;
+  });
+
+  if(equityOpen){
+    INDICES.forEach(i=>{ i.val = jitterPrice(i.val, 0.0006); const c = jitterChip(i.pct,i.dir); i.pct=c.chg; i.dir=c.dir; });
+    STOCKS.forEach(s=>{ s.price = jitterPrice(s.price, 0.0015); const c = jitterChip(s.chg,s.dir); s.chg=c.chg; s.dir=c.dir; });
+    [GAINERS, LOSERS, MOST_ACTIVE].forEach(list=>{
+      list.forEach(item=>{ item.price = jitterPrice(item.price, 0.0015); const c = jitterChip(item.chg, item.chg.startsWith('-')?'down':'up'); item.chg=c.chg; });
+    });
+    Object.values(WATCHLISTS).forEach(list=>{
+      list.forEach(item=>{ if(item.price==='—') return; item.price = jitterPrice(item.price, 0.0015); const c = jitterChip(item.chg, item.dir); item.chg=c.chg; item.dir=c.dir; });
+    });
+    MARKET_BREADTH.advancing = Math.max(200, MARKET_BREADTH.advancing + Math.round((Math.random()-0.5)*20));
+    MARKET_BREADTH.declining = Math.max(200, MARKET_BREADTH.declining + Math.round((Math.random()-0.5)*20));
+    MARKET_BREADTH.unchanged = Math.max(20, MARKET_BREADTH.unchanged + Math.round((Math.random()-0.5)*4));
+  }
+
+  if(commodityOpen){
+    COMMODITIES.forEach(c=>{ c.val = jitterPrice(c.val, 0.0009); const j = jitterChip(c.chg,c.dir); c.chg=j.chg; c.dir=j.dir; });
+  }
+
+  renderShell();
+  const liveRoutes = ['home','stocks','stockdetail','watchlist','fo','optionchain','markets','commodities','livemarkets'];
+  if(liveRoutes.includes(STATE.route)){
+    const active = document.activeElement;
+    const typing = active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA');
+    if(!typing) render();
+  }
+}
+setInterval(tickLiveData, 3000);
+
+// ===================== AUTH + PERSISTENCE (window.storage) =====================
+// Real persistence via Anthropic's per-user artifact storage — data genuinely
+// saves and reloads across visits for this user in this artifact. This is
+// NOT a general-purpose backend/database: there's no password hashing, no
+// OTP is actually sent (any 6-digit code is accepted), and nothing here is
+// production-grade auth security. It's the closest honest approximation of
+// "login + saved data" achievable inside a static, serverless HTML file.
+let PROFILE = null; // {name, phone, key}
+let BACKEND_URL = null; // set via Settings; a plain URL string, never a secret
+
+async function saveBackendUrl(){
+  const raw = document.getElementById('backendUrlInput').value.trim().replace(/\/$/,'');
+  BACKEND_URL = raw || null;
+  try{ await window.storage.set('backendUrl', BACKEND_URL || ''); }catch(e){ /* non-fatal */ }
+  testBackendConnection();
+}
+async function loadBackendUrl(){
+  try{
+    const res = await window.storage.get('backendUrl');
+    if(res && res.value) BACKEND_URL = res.value;
+  }catch(e){ /* none saved yet */ }
+}
+async function testBackendConnection(){
+  const note = document.getElementById('backendStatusNote');
+  if(!BACKEND_URL){ if(note) note.textContent = 'No backend URL set.'; return; }
+  if(note) note.textContent = 'Checking connection…';
+  try{
+    const resp = await fetch(BACKEND_URL + '/api/health', {method:'GET'});
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if(note) note.textContent = `✅ Connected — ${data.service || 'backend'} is reachable at ${BACKEND_URL}.`;
+  }catch(err){
+    if(note) note.textContent = `⚠️ Could not reach ${BACKEND_URL} (${err.message}). Falling back to built-in simulation. Check the server is running and CORS_ORIGIN includes this page's origin.`;
+  }
+}
+
+// Real Angel One-backed index quotes, via YOUR backend — only attempted
+// when a backend URL is configured; silently falls back otherwise.
+async function fetchIndicesFromBackend(){
+  if(!BACKEND_URL) return false;
+  try{
+    const resp = await fetch(BACKEND_URL + '/api/market/indices');
+    if(!resp.ok) return false;
+    const data = await resp.json();
+    let any = false;
+    Object.entries(data).forEach(([name, v])=>{
+      if(v && v.ltp){
+        const t = TICKER.find(x=>x.name===name);
+        if(t){ t.val = Number(v.ltp).toLocaleString('en-IN',{maximumFractionDigits:2}); any = true; }
+        const idx = INDICES.find(x=>x.name===name);
+        if(idx){ idx.val = t ? t.val : idx.val; }
+      }
+    });
+    return any;
+  }catch(e){ return false; }
+}
+let DEFAULT_WATCHLISTS = null;
+
+function populateCountrySelect(){
+  const sel = document.getElementById('countrySelect');
+  if(!sel) return;
+  sel.innerHTML = COUNTRIES.map(c=>`<option value="${c.d}">${c.d} ${c.n}</option>`).join('');
+}
+
+function authGoToStep(step){
+  [1,2,3].forEach(s=>{
+    const el = document.getElementById('authStep'+s);
+    if(el) el.style.display = (s===step) ? 'block' : 'none';
+  });
+}
+
+function authSendOtp(){
+  const errEl = document.getElementById('authError1');
+  const dial = document.getElementById('countrySelect').value;
+  const num = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  if(num.length < 6 || num.length > 13){
+    errEl.textContent = 'Enter a valid phone number.';
+    return;
+  }
+  errEl.textContent = '';
+  STATE.authPhone = dial + num;
+  document.getElementById('authOtpSub').textContent = `Enter the 6-digit code for ${dial} ${num} (prototype — type any 6 digits).`;
+  authGoToStep(2);
+}
+
+async function authVerifyOtp(){
+  const errEl = document.getElementById('authError2');
+  const otp = document.getElementById('otpInput').value.replace(/\D/g,'');
+  if(otp.length !== 6){
+    errEl.textContent = 'Enter the 6-digit code.';
+    return;
+  }
+  errEl.textContent = '';
+  const phoneKey = STATE.authPhone;
+  try{
+    const res = await window.storage.get('profile:'+phoneKey);
+    if(res && res.value){
+      const profile = JSON.parse(res.value);
+      await enterApp(profile);
+      return;
+    }
+  }catch(e){ /* no existing profile — fall through to signup */ }
+  authGoToStep(3);
+}
+
+async function authCompleteProfile(){
+  const errEl = document.getElementById('authError3');
+  const name = document.getElementById('nameInput').value.trim();
+  if(!name){
+    errEl.textContent = 'Please enter your name.';
+    return;
+  }
+  errEl.textContent = '';
+  const profile = {name, phone: STATE.authPhone, key: STATE.authPhone};
+  try{ await window.storage.set('profile:'+profile.key, JSON.stringify(profile)); }catch(e){ console.error('Could not save profile:', e); }
+  await enterApp(profile);
+}
+
+async function enterApp(profile){
+  PROFILE = profile;
+  DEFAULT_WATCHLISTS = DEFAULT_WATCHLISTS || JSON.parse(JSON.stringify(WATCHLISTS));
+  try{
+    const res = await window.storage.get('watchlists:'+profile.key);
+    if(res && res.value) WATCHLISTS = JSON.parse(res.value);
+    else WATCHLISTS = JSON.parse(JSON.stringify(DEFAULT_WATCHLISTS));
+  }catch(e){ WATCHLISTS = JSON.parse(JSON.stringify(DEFAULT_WATCHLISTS)); }
+
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('mainShell').style.display = 'block';
+  const initials = profile.name.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.querySelectorAll('.avatar-lg').forEach(el=>el.textContent = initials || 'LV');
+  STATE.route = 'home';
+  render();
+  fetchRealLiveMarketData();
+}
+
+function logOut(){
+  PROFILE = null;
+  document.getElementById('mainShell').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+  authGoToStep(1);
+  const p = document.getElementById('phoneInput'); if(p) p.value = '';
+  const o = document.getElementById('otpInput'); if(o) o.value = '';
+}
+
+async function connectBroker(name, url){
+  window.open(url, '_blank', 'noopener,noreferrer');
+  const ok = confirm(`Have you finished logging into ${name}?\n\nConfirm to link ${name} to LedgerView and unlock every PRO tool — free, for life.\n\n(Prototype note: this confirms locally; there's no real OAuth handshake with ${name} here.)`);
+  if(!ok || !PROFILE) return;
+  PROFILE.pro = true;
+  PROFILE.connectedBroker = name;
+  PROFILE.proSince = istDateStr(getIST());
+  try{ await window.storage.set('profile:'+PROFILE.key, JSON.stringify(PROFILE)); }catch(e){ console.error('Could not save Pro status:', e); }
+  render();
+}
+
+async function saveWatchlists(){
+  if(!PROFILE) return;
+  try{ await window.storage.set('watchlists:'+PROFILE.key, JSON.stringify(WATCHLISTS)); }
+  catch(e){ console.error('Could not save watchlists:', e); }
+}
+
+function createWatchlist(){
+  const name = prompt('Name your new watchlist:');
+  if(!name || !name.trim()) return;
+  const clean = name.trim();
+  if(WATCHLISTS[clean]){ alert('A watchlist with that name already exists.'); return; }
+  WATCHLISTS[clean] = [];
+  saveWatchlists();
+  navigate('watchlist', {watchlistTab: clean});
+}
+function deleteWatchlist(name){
+  if(!confirm(`Delete watchlist "${name}"? This can't be undone.`)) return;
+  delete WATCHLISTS[name];
+  saveWatchlists();
+  navigate('watchlist', {watchlistTab: Object.keys(WATCHLISTS)[0]});
+}
+function addToWatchlist(listName){
+  const input = document.getElementById('addSymInput');
+  const raw = (input.value || '').trim().toUpperCase();
+  if(!raw) return;
+  const existing = STOCKS.find(s=>s.sym===raw);
+  const row = existing
+    ? {sym:existing.sym, price:existing.price, chg:existing.chg, dir:existing.dir, signal:existing.signal}
+    : {sym:raw, price:'—', chg:'0.00%', dir:'up', signal:'HOLD'};
+  if(!WATCHLISTS[listName].find(r=>r.sym===raw)) WATCHLISTS[listName].push(row);
+  saveWatchlists();
+  navigate('watchlist', {watchlistTab: listName});
+}
+function removeFromWatchlist(listName, sym){
+  WATCHLISTS[listName] = WATCHLISTS[listName].filter(r=>r.sym!==sym);
+  saveWatchlists();
+  navigate('watchlist', {watchlistTab: listName});
+}
+
+populateCountrySelect();
+loadBackendUrl();
+
+</script>
+</body>
+</html>
