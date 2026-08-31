@@ -545,8 +545,11 @@
         <section class="charts-wrap">
           <div class="card">
             <div class="panel-header">
-              <h3>Live Charts</h3>
-              <span class="pill" id="chartRefreshLabel">Updating</span>
+              <h3>Candlestick Charts</h3>
+              <span class="pill" id="chartRefreshLabel">Ready</span>
+            </div>
+            <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+              ${CHART_SYMBOLS.map((s) => `<button onclick="loadChartData('${s}', chartState.selectedRange)" style="padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font-size: 0.85rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text)'; this.style.background='rgba(109,141,255,0.1)'" onmouseout="this.style.color='var(--muted)'; this.style.background='transparent'">${s}</button>`).join('')}
             </div>
             <div class="charts-grid" id="chartsGrid"></div>
           </div>
@@ -570,6 +573,10 @@
       const chartRefreshLabel = document.getElementById('chartRefreshLabel');
       const globalSearchInput = document.getElementById('globalSearchInput');
       const globalSearchResults = document.getElementById('globalSearchResults');
+
+      // Declare CHART_SYMBOLS and CHART_RANGES globally for use in onclick handlers
+      var CHART_SYMBOLS = [];
+      var CHART_RANGES = [];
 
       const moneyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
       const numberFormatter = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
@@ -627,48 +634,155 @@
         tickerStrip.innerHTML = markup + markup;
       }
 
-      function renderChartCard(chart) {
-        const values = Array.isArray(chart.values) ? chart.values : [];
-        const yValues = values.map((point) => point.y);
-        const min = Math.min(...yValues, 0);
-        const max = Math.max(...yValues, 1);
-        const path = values.map((point, index) => {
-          const x = (index / Math.max(values.length - 1, 1)) * 100;
-          const y = 100 - ((point.y - min) / Math.max(max - min, 1)) * 100;
-          return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-        }).join(' ');
-        const latest = values[values.length - 1]?.y || 0;
-        const first = values[0]?.y || 0;
-        const delta = ((latest - first) / Math.max(first, 1)) * 100;
+      const chartState = {
+        selectedSymbol: 'NIFTY',
+        selectedRange: '1M',
+        data: null,
+        loading: false,
+        error: null,
+      };
+
+      const CHART_SYMBOLS = ['NIFTY', 'BANKNIFTY', 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'TCS'];
+      const CHART_RANGES = ['1D', '1W', '1M', '3M', '1Y'];
+
+      function renderCandlestick(candles, symbol, range) {
+        if (!Array.isArray(candles) || candles.length === 0) {
+          return `<div style="padding:40px; text-align:center; color:var(--muted);">No chart data available for ${symbol}</div>`;
+        }
+
+        const width = 600;
+        const height = 300;
+        const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+        const chartWidth = width - padding.left - padding.right;
+        const chartHeight = height - padding.top - padding.bottom;
+        const candleWidth = Math.max(2, Math.floor(chartWidth / candles.length) - 1);
+
+        const prices = candles.flatMap((c) => [c.open || 0, c.high || 0, c.low || 0, c.value || 0]);
+        const minPrice = Math.min(...prices, 0);
+        const maxPrice = Math.max(...prices, 1);
+        const priceRange = maxPrice - minPrice || 1;
+
+        const volumes = candles.map((c) => c.volume || 0);
+        const maxVolume = Math.max(...volumes, 1);
+
+        const scalePrice = (price) => ((price - minPrice) / priceRange) * chartHeight;
+        const scaleVolume = (vol) => (vol / maxVolume) * (chartHeight * 0.25);
+        const scaleX = (index) => padding.left + (index / Math.max(candles.length - 1, 1)) * chartWidth;
+
+        let candleSvg = candles.map((candle, index) => {
+          const x = scaleX(index);
+          const open = candle.open || 0;
+          const high = candle.high || 0;
+          const low = candle.low || 0;
+          const close = candle.value || 0;
+
+          const yHigh = padding.top + chartHeight - scalePrice(high);
+          const yLow = padding.top + chartHeight - scalePrice(low);
+          const yOpen = padding.top + chartHeight - scalePrice(open);
+          const yClose = padding.top + chartHeight - scalePrice(close);
+
+          const bodyTop = Math.min(yOpen, yClose);
+          const bodyBottom = Math.max(yOpen, yClose);
+          const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
+          const isGain = close >= open;
+          const color = isGain ? '#2dd4a6' : '#ff6b7d';
+
+          return `
+            <g class="candle" data-index="${index}">
+              <line x1="${x}" y1="${yHigh}" x2="${x}" y2="${yLow}" stroke="${color}" stroke-width="0.8" opacity="0.7" />
+              <rect x="${x - candleWidth / 2}" y="${bodyTop}" width="${candleWidth}" height="${bodyHeight}" fill="${color}" stroke="${color}" stroke-width="0.5" />
+            </g>
+          `;
+        }).join('');
+
+        let volumeBars = candles.map((candle, index) => {
+          const x = scaleX(index);
+          const volHeight = scaleVolume(candle.volume || 0);
+          const y = padding.top + chartHeight + volHeight;
+          return `<rect x="${x - candleWidth / 2}" y="${y}" width="${candleWidth}" height="${volHeight}" fill="rgba(109,141,255,0.2)" />`;
+        }).join('');
+
+        const latest = candles[candles.length - 1];
+        const latestPrice = latest?.value || 0;
+        const firstPrice = candles[0]?.open || latestPrice;
+        const delta = ((latestPrice - firstPrice) / Math.max(firstPrice, 1)) * 100;
 
         return `
-          <div class="chart-card">
+          <div class="chart-card" style="grid-column: 1 / -1;">
             <div class="chart-head">
               <div>
-                <small>${chart.title}</small>
-                <strong>${formatNumber(latest)}</strong>
+                <small>${symbol}</small>
+                <strong>${formatNumber(latestPrice)}</strong>
               </div>
               <span class="pill ${toneClass(delta)}">${formatPercent(delta)}</span>
             </div>
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="${chart.title} chart">
+            <div style="margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+              ${CHART_RANGES.map((r) => `<button onclick="loadChartData('${symbol}', '${r}')" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: ${r === chartState.selectedRange ? 'rgba(109,141,255,0.2)' : 'transparent'}; color: ${r === chartState.selectedRange ? 'var(--text)' : 'var(--muted)'}; cursor: pointer; font-size: 0.75rem;">${r}</button>`).join('')}
+            </div>
+            <svg viewBox="0 0 ${width} ${height}" style="width: 100%; height: auto; background: rgba(255,255,255,0.01); border-radius: 10px;" aria-label="${symbol} candlestick chart">
               <defs>
-                <linearGradient id="grad-${chart.title.replace(/[^a-zA-Z0-9]/g, '')}" x1="0" x2="1" y1="0" y2="0">
-                  <stop offset="0%" stop-color="#6d8cff" />
-                  <stop offset="100%" stop-color="#7ae6ff" />
+                <linearGradient id="price-grid" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="rgba(109,141,255,0.1)" />
+                  <stop offset="100%" stop-color="rgba(109,141,255,0)" />
                 </linearGradient>
               </defs>
-              <path d="${path}" fill="none" stroke="url(#grad-${chart.title.replace(/[^a-zA-Z0-9]/g, '')})" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <rect x="${padding.left}" y="${padding.top}" width="${chartWidth}" height="${chartHeight}" fill="url(#price-grid)" />
+              <line x1="${padding.left}" y1="${padding.top + chartHeight}" x2="${width - padding.right}" y2="${padding.top + chartHeight}" stroke="var(--line)" stroke-width="1" />
+              ${volumeBars}
+              ${candleSvg}
+              <text x="${padding.left - 10}" y="${padding.top + 10}" font-size="10" fill="var(--muted-2)" text-anchor="end">${formatNumber(maxPrice)}</text>
+              <text x="${padding.left - 10}" y="${padding.top + chartHeight - 5}" font-size="10" fill="var(--muted-2)" text-anchor="end">${formatNumber(minPrice)}</text>
+              <text x="${padding.left + 10}" y="${height - 10}" font-size="10" fill="var(--muted-2)">Time</text>
             </svg>
+            <div style="margin-top: 12px; font-size: 0.75rem; color: var(--muted); display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+              <div>Open: ${formatNumber(candles[0]?.open || 0)}</div>
+              <div>High: ${formatNumber(Math.max(...candles.map((c) => c.high || 0)))}</div>
+              <div>Low: ${formatNumber(Math.min(...candles.map((c) => c.low || 0)))}</div>
+              <div>Close: ${formatNumber(latestPrice)}</div>
+              <div>Volume: ${formatNumber(candles[candles.length - 1]?.volume || 0)}</div>
+              <div>Prev Close: ${formatNumber(candles[0]?.open || 0)}</div>
+            </div>
           </div>
         `;
       }
 
-      function renderCharts(data) {
-        const charts = (data.charts || []).slice(0, 4);
-        chartsGrid.innerHTML = charts.map(renderChartCard).join('');
+      async function loadChartData(symbol, range) {
+        chartState.selectedSymbol = symbol;
+        chartState.selectedRange = range;
+        chartState.loading = true;
+        chartState.error = null;
 
-        const width = chartsGrid.getBoundingClientRect().width;
-        chartsGrid.style.gridTemplateColumns = width >= 1920 ? 'repeat(4, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))';
+        try {
+          const response = await fetch(`${BACKEND_URL}/api/market/chart/${encodeURIComponent(symbol)}?range=${encodeURIComponent(range)}`);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          if (!data.points || !Array.isArray(data.points)) throw new Error('Invalid chart data');
+          chartState.data = data;
+          renderChartData();
+        } catch (error) {
+          chartState.error = error.message;
+          renderChartError();
+        } finally {
+          chartState.loading = false;
+        }
+      }
+
+      function renderChartData() {
+        if (!chartState.data || !chartState.data.points) {
+          chartsGrid.innerHTML = '<div style="padding:40px; text-align:center; color:var(--red);">Chart data unavailable</div>';
+          return;
+        }
+        chartsGrid.innerHTML = renderCandlestick(chartState.data.points, chartState.selectedSymbol, chartState.selectedRange);
+      }
+
+      function renderChartError() {
+        chartsGrid.innerHTML = `<div style="padding:40px; text-align:center; color:var(--red);">Unable to load chart for ${chartState.selectedSymbol}: ${chartState.error}</div>`;
+      }
+
+      function renderCharts(data) {
+        if (!chartsGrid) return;
+        chartsGrid.innerHTML = `<div style="padding:40px; text-align:center; color:var(--muted);">Loading charts…</div>`;
+        loadChartData(CHART_SYMBOLS[0], '1M');
       }
 
       function renderTerminal(data) {
@@ -937,12 +1051,18 @@
               const items = Array.isArray(payload.items) ? payload.items : [];
               terminalSearchResults.innerHTML = items.length
                 ? items.map((item) => `
-                  <div class="search-result">
-                    <div style="font-size:0.8rem; color:var(--text); font-weight:600;">${item.symbol}</div>
-                    <small class="muted">${item.name}</small>
+                  <div class="search-result" data-symbol="${item.symbol}" style="cursor:pointer;">
+                    <div style="font-size:0.8rem; color:var(--text); font-weight:600;">${item.name || item.symbol}</div>
+                    <small class="muted">${item.symbol} · ${item.exchange || 'NSE'} · ₹${Number(item.price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })} · CAS ${Number(item.casScore || 0).toFixed(0)}</small>
                   </div>
                 `).join('')
                 : '<div class="search-result"><small class="muted">No matches found.</small></div>';
+
+              terminalSearchResults.querySelectorAll('[data-symbol]').forEach((result) => {
+                result.addEventListener('click', () => {
+                  window.location.href = `stock.html?symbol=${encodeURIComponent(result.dataset.symbol)}`;
+                });
+              });
             } catch (error) {
               terminalSearchResults.innerHTML = '<div class="search-result"><small class="muted">Search unavailable.</small></div>';
             }
@@ -982,11 +1102,15 @@
 
         globalSearchResults.innerHTML = items.map((item) => `
           <button class="search-result-item" type="button" data-symbol="${item.symbol}">
-            <div>
-              <strong>${item.symbol}</strong>
-              <div class="search-result-meta">${item.name || item.exchange || 'Market symbol'}</div>
+            <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+              <strong>${item.name || item.symbol}</strong>
+              <div class="search-result-meta">${item.symbol} · ${item.exchange || 'NSE'}</div>
             </div>
-            <span class="pill">${item.exchange || 'NSE'}</span>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin-left:auto; min-width:130px;">
+              <span class="pill">${item.exchange || 'NSE'}</span>
+              <span class="search-result-meta">₹${Number(item.price || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+              <span class="search-result-meta">CAS ${Number(item.casScore || 0).toFixed(0)}</span>
+            </div>
           </button>
         `).join('');
         globalSearchResults.classList.add('visible');
@@ -997,6 +1121,7 @@
             globalSearchInput.value = symbol;
             globalSearchResults.classList.remove('visible');
             marketStatusText.textContent = `${symbol} selected`;
+            window.location.href = `stock.html?symbol=${encodeURIComponent(symbol)}`;
           });
         });
       }
@@ -1028,6 +1153,38 @@
         chartsGrid.style.gridTemplateColumns = width >= 1920 ? 'repeat(4, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))';
       });
       if (chartsGrid) resizeObserver.observe(chartsGrid);
+
+      // Initialize WebSocket for live chart updates
+      let chartWebSocket = null;
+      function initChartWebSocket() {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws/market?symbols=${CHART_SYMBOLS.join(',')}`;
+        chartWebSocket = new WebSocket(wsUrl);
+        chartWebSocket.addEventListener('message', (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'quote' && data.symbol === chartState.selectedSymbol) {
+              // Update chart if a new candle has formed or last candle needs update
+              if (chartState.data && chartState.data.points) {
+                const lastCandle = chartState.data.points[chartState.data.points.length - 1];
+                if (lastCandle && data.ltp) {
+                  lastCandle.value = data.ltp;
+                  lastCandle.high = Math.max(lastCandle.high, data.ltp);
+                  lastCandle.low = Math.min(lastCandle.low, data.ltp);
+                  if (data.volume) lastCandle.volume = data.volume;
+                  renderChartData();
+                }
+              }
+            }
+          } catch (err) {
+            // Silently fail on parse error
+          }
+        });
+        chartWebSocket.addEventListener('close', () => {
+          setTimeout(initChartWebSocket, 3000);
+        });
+      }
+      initChartWebSocket();
 
       loadTerminal();
       setInterval(loadTerminal, 60000);

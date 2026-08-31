@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Detail — LedgerView</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { background: #070b16; }
+      .header {
+        border-bottom: 1px solid var(--line);
+        padding: 20px 0;
+        background: rgba(11, 17, 29, 0.85);
+      }
+      .header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+      .stock-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+        padding: 28px 0 60px;
+      }
+      .detail-card {
+        background: rgba(16, 26, 49, 0.84);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 24px;
+      }
+      .detail-card h2 { margin: 0 0 20px; font-size: 1.3rem; }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      .detail-item {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+      }
+      .detail-item-label {
+        display: block;
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 8px;
+      }
+      .detail-item-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--blue);
+        cursor: pointer;
+        margin-bottom: 12px;
+      }
+      .back-link:hover {
+        color: var(--text);
+      }
+      .loading {
+        color: var(--muted);
+        text-align: center;
+        padding: 40px;
+      }
+      .error {
+        color: var(--red);
+        background: rgba(255, 107, 125, 0.1);
+        border: 1px solid rgba(255, 107, 125, 0.3);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+      @media (max-width: 840px) {
+        .stock-container { grid-template-columns: 1fr; }
+        .detail-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div class="container header-inner">
+        <div class="brand" aria-label="LedgerView stock detail">
+          <span class="brand-mark">L</span>
+          <span>LedgerView</span>
+        </div>
+        <div class="nav-actions">
+          <a class="btn btn-secondary" href="index.html">Back to Terminal</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container stock-container">
+      <div class="detail-card">
+        <a class="back-link" onclick="window.history.back();"><span>←</span> Back</a>
+        <div id="errorContainer"></div>
+        <div id="loadingIndicator" class="loading">Loading stock details…</div>
+        <div id="stockDetail" style="display: none;">
+          <div style="margin-bottom: 24px;">
+            <h2 style="margin: 0;"><span id="stockName">—</span></h2>
+            <small style="color: var(--muted);" id="stockMeta">Loading…</small>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-item-label">Live Price</span>
+              <span class="detail-item-value" id="stockLtp">₹—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item-label">Open</span>
+              <span class="detail-item-value" id="stockOpen">₹—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item-label">High</span>
+              <span class="detail-item-value" id="stockHigh">₹—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item-label">Low</span>
+              <span class="detail-item-value" id="stockLow">₹—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item-label">Previous Close</span>
+              <span class="detail-item-value" id="stockPrevClose">₹—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item-label">Volume</span>
+              <span class="detail-item-value" id="stockVolume">—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item-label">Market Cap</span>
+              <span class="detail-item-value" id="stockMarketCap">₹—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item-label">CAS Score</span>
+              <span class="detail-item-value" id="stockCasScore">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:4000'
+        : 'https://ledgerview-backend-tzxp.onrender.com';
+
+      function formatPrice(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return '—';
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+      }
+
+      function formatNumber(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return '—';
+        return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+      }
+
+      function formatVolume(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num) || num === 0) return '—';
+        if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+        return num.toString();
+      }
+
+      async function loadStockDetail() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const stockDetail = document.getElementById('stockDetail');
+        const errorContainer = document.getElementById('errorContainer');
+
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          let symbol = urlParams.get('symbol');
+          
+          if (!symbol) {
+            throw new Error('No symbol specified');
+          }
+
+          symbol = decodeURIComponent(symbol).toUpperCase();
+          const response = await fetch(`${BACKEND_URL}/api/market/stock/${encodeURIComponent(symbol)}`);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to load stock detail: ${response.status}`);
+          }
+
+          const data = await response.json();
+          if (!data) {
+            throw new Error('No data returned');
+          }
+
+          document.getElementById('stockName').textContent = data.name || data.symbol || symbol;
+          document.getElementById('stockMeta').textContent = `${data.symbol || symbol} · ${data.exchange || 'NSE'}`;
+          document.getElementById('stockLtp').textContent = formatPrice(data.ltp);
+          document.getElementById('stockOpen').textContent = formatPrice(data.open);
+          document.getElementById('stockHigh').textContent = formatPrice(data.high);
+          document.getElementById('stockLow').textContent = formatPrice(data.low);
+          document.getElementById('stockPrevClose').textContent = formatPrice(data.previousClose);
+          document.getElementById('stockVolume').textContent = formatVolume(data.volume);
+          document.getElementById('stockMarketCap').textContent = data.marketCap ? formatPrice(data.marketCap) : '—';
+          document.getElementById('stockCasScore').textContent = data.casScore !== undefined && data.casScore !== null ? `${Math.round(Number(data.casScore))}` : '—';
+
+          loadingIndicator.style.display = 'none';
+          stockDetail.style.display = 'block';
+        } catch (error) {
+          loadingIndicator.style.display = 'none';
+          errorContainer.innerHTML = `<div class="error">${error.message}</div>`;
+          stockDetail.style.display = 'block';
+        }
+      }
+
+      loadStockDetail();
+    </script>
+  </body>
+</html>

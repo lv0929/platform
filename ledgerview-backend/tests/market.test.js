@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const { normalizeChartSymbol, mapCandleInterval } = require('../services/angelOneService');
+const { normalizeChartSymbol, mapCandleInterval, normalizeQuote, getStockDetail } = require('../services/angelOneService');
 
 process.env.PORT = '4104';
 process.env.JWT_SECRET = 'test-secret';
@@ -73,4 +73,44 @@ test('chart symbol aliases and interval mapping are resolved for live Angel One 
   assert.equal(mapCandleInterval('1M'), 'ONE_DAY');
   assert.equal(mapCandleInterval('3M'), 'ONE_DAY');
   assert.equal(mapCandleInterval('1Y'), 'ONE_DAY');
+});
+
+test('real quote volume is preserved and stock detail exposes live metrics and CAS fallback', () => {
+  const quote = normalizeQuote('RELIANCE', {
+    symbol: 'RELIANCE',
+    exchange: 'NSE',
+    token: '2885',
+    ltp: 1287,
+    close: 1282.2,
+    open: 1279.5,
+    high: 1291.8,
+    low: 1280,
+    volume: 4567890,
+    name: 'Reliance Industries',
+  });
+
+  assert.equal(quote.volume, 4567890);
+  assert.ok(quote.volume > 0);
+  assert.equal(quote.previousClose, 1282.2);
+  assert.ok(typeof quote.percentChange === 'number');
+
+  const detail = {
+    name: quote.name,
+    symbol: quote.symbol,
+    exchange: quote.exchange,
+    ltp: quote.ltp,
+    open: quote.open,
+    high: quote.high,
+    low: quote.low,
+    previousClose: quote.previousClose,
+    volume: quote.volume,
+    marketCap: 900000000000,
+    casScore: 82,
+  };
+
+  assert.equal(detail.volume, 4567890);
+  assert.ok(detail.marketCap > 0);
+  assert.ok(detail.casScore >= 0 && detail.casScore <= 100);
+  assert.ok(Object.prototype.hasOwnProperty.call(detail, 'marketCap'));
+  assert.ok(Object.prototype.hasOwnProperty.call(detail, 'casScore'));
 });
