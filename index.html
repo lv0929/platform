@@ -548,9 +548,7 @@
               <h3>Candlestick Charts</h3>
               <span class="pill" id="chartRefreshLabel">Ready</span>
             </div>
-            <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
-              ${CHART_SYMBOLS.map((s) => `<button onclick="loadChartData('${s}', chartState.selectedRange)" style="padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font-size: 0.85rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text)'; this.style.background='rgba(109,141,255,0.1)'" onmouseout="this.style.color='var(--muted)'; this.style.background='transparent'">${s}</button>`).join('')}
-            </div>
+            <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;" id="chartSymbolButtons"></div>
             <div class="charts-grid" id="chartsGrid"></div>
           </div>
         </section>
@@ -573,10 +571,6 @@
       const chartRefreshLabel = document.getElementById('chartRefreshLabel');
       const globalSearchInput = document.getElementById('globalSearchInput');
       const globalSearchResults = document.getElementById('globalSearchResults');
-
-      // Declare CHART_SYMBOLS and CHART_RANGES globally for use in onclick handlers
-      var CHART_SYMBOLS = [];
-      var CHART_RANGES = [];
 
       const moneyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
       const numberFormatter = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
@@ -644,6 +638,13 @@
 
       const CHART_SYMBOLS = ['NIFTY', 'BANKNIFTY', 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'TCS'];
       const CHART_RANGES = ['1D', '1W', '1M', '3M', '1Y'];
+
+      function renderChartSymbolButtons() {
+        if (!chartSymbolButtons) return;
+        chartSymbolButtons.innerHTML = CHART_SYMBOLS.map((s) =>
+          `<button onclick="loadChartData('${s}', chartState.selectedRange)" style="padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font-size: 0.85rem; transition: all 0.2s;" onmouseover="this.style.color='var(--text)'; this.style.background='rgba(109,141,255,0.1)'" onmouseout="this.style.color='var(--muted)'; this.style.background='transparent'">${s}</button>`
+        ).join('');
+      }
 
       function renderCandlestick(candles, symbol, range) {
         if (!Array.isArray(candles) || candles.length === 0) {
@@ -1186,6 +1187,7 @@
       }
       initChartWebSocket();
 
+      renderChartSymbolButtons();
       loadTerminal();
       setInterval(loadTerminal, 60000);
     </script>
