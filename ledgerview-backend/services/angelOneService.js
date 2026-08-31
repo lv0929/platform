@@ -32,6 +32,13 @@ const INSTRUMENT_TOKENS = {
   TCS: { exchange: 'NSE', tradingsymbol: 'TCS-EQ', symboltoken: '11536' },
 };
 
+const SECONDARY_CHART_TICKERS = {
+  NIFTY: '^NSEI',
+  BANKNIFTY: '^NSEBANK',
+  RELIANCE: 'RELIANCE.NS',
+  HDFCBANK: 'HDFCBANK.NS',
+};
+
 function normalizeIndexName(name) {
   const raw = String(name || '').trim();
   if (!raw) return null;
@@ -501,8 +508,6 @@ async function getChartSeries(symbol, range = '1M') {
   const end = new Date();
   const start = new Date(end.getTime() - (days[String(range).trim().toUpperCase()] || 31) * 86400000);
   const format = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
-  const sessionData = await ensureSession();
-
   const requestBody = {
     exchange: instrument.exchange,
     symboltoken: String(instrument.symboltoken || instrument.token),
@@ -511,29 +516,58 @@ async function getChartSeries(symbol, range = '1M') {
     todate: format(end),
   };
 
-  const { data } = await axios.post(ROOT_URL + ROUTES.candles, requestBody, {
-    headers: { ...baseHeaders(), Authorization: `Bearer ${sessionData.jwtToken}` },
-    timeout: 15000,
-  });
+  try {
+    const sessionData = await ensureSession();
+    const { data } = await axios.post(ROOT_URL + ROUTES.candles, requestBody, {
+      headers: { ...baseHeaders(), Authorization: `Bearer ${sessionData.jwtToken}` },
+      timeout: 15000,
+    });
 
-  if (!data || data.status !== true || !Array.isArray(data.data)) {
-    throw new Error((data && data.message) || 'Historical chart data unavailable');
+    if (!data || data.status !== true || !Array.isArray(data.data)) {
+      throw new Error((data && data.message) || 'Historical chart data unavailable');
+    }
+
+    return {
+      symbol: normalized,
+      exchange: instrument.exchange,
+      range,
+      interval,
+      points: data.data.map((row) => ({
+        label: row[0],
+        open: Number(row[1]),
+        high: Number(row[2]),
+        low: Number(row[3]),
+        value: Number(row[4]),
+        volume: Number(row[5] || 0),
+      })),
+    };
+  } catch (error) {
+    const ticker = SECONDARY_CHART_TICKERS[normalized];
+    if (!ticker) throw error;
+
+    const yahooInterval = { '1D': '5m', '1W': '1h', '1M': '1d', '3M': '1d', '1Y': '1d' }[String(range).trim().toUpperCase()] || '1d';
+    const period1 = Math.floor(start.getTime() / 1000);
+    const period2 = Math.floor(end.getTime() / 1000);
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=${yahooInterval}&events=history`;
+    const { data } = await axios.get(yahooUrl, { timeout: 15000 });
+    const result = data?.chart?.result?.[0];
+    const quote = result?.indicators?.quote?.[0];
+    if (!result || !quote || !Array.isArray(result.timestamp)) {
+      throw new Error('Historical chart data unavailable from primary and secondary providers');
+    }
+
+    const points = result.timestamp.map((timestamp, index) => ({
+      label: new Date(timestamp * 1000).toISOString().slice(0, 19).replace('T', ' '),
+      open: Number(quote.open?.[index]),
+      high: Number(quote.high?.[index]),
+      low: Number(quote.low?.[index]),
+      value: Number(quote.close?.[index]),
+      volume: Number(quote.volume?.[index] || 0),
+    })).filter((point) => [point.open, point.high, point.low, point.value].every(Number.isFinite));
+
+    if (!points.length) throw new Error('Historical chart data unavailable from primary and secondary providers');
+    return { symbol: normalized, exchange: instrument.exchange, range, interval, points };
   }
-
-  return {
-    symbol: normalized,
-    exchange: instrument.exchange,
-    range,
-    interval,
-    points: data.data.map((row) => ({
-      label: row[0],
-      open: Number(row[1]),
-      high: Number(row[2]),
-      low: Number(row[3]),
-      value: Number(row[4]),
-      volume: Number(row[5] || 0),
-    })),
-  };
 }
 
 module.exports = {
