@@ -168,6 +168,17 @@ button{font-family:inherit;cursor:pointer;}
 .backend-status .dot{width:6px;height:6px;flex:0 0 6px;}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.public-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 28px;border-bottom:1px solid var(--rule-hair);background:var(--bg-elev);}
+.public-nav-links{display:flex;align-items:center;gap:18px;font-size:13px;color:var(--ink-dim);}
+.public-nav-links a:hover{color:var(--paper);}
+.public-nav-cta{display:flex;align-items:center;gap:8px;}
+.public-nav-cta a{padding:8px 12px;border:1px solid var(--rule-hair);border-radius:9px;font-size:12px;}
+.public-nav-cta a:last-child{background:var(--bull);border-color:var(--bull);color:#06231a;font-weight:600;}
+.market-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);}
+.home-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+.home-chart-card{cursor:pointer;}
+.home-chart-card canvas{display:block;width:100%;height:150px;margin-top:8px;}
+@media(max-width:700px){.public-nav{padding:12px 16px;align-items:flex-start;}.public-nav-links{gap:10px;flex-wrap:wrap;font-size:11px;}.public-nav-cta{display:none;}.home-chart-grid{grid-template-columns:1fr;}}
 
 /* header */
 .topbar{
@@ -753,7 +764,7 @@ button{font-family:inherit;cursor:pointer;}
 </head>
 <body>
 
-<div id="authScreen" class="auth-screen">
+<div id="authScreen" class="auth-screen" style="display:none;">
   <div class="auth-card">
     <div class="auth-brand">
       <div class="brand-mark">Ledger<span>View</span></div>
@@ -791,7 +802,7 @@ button{font-family:inherit;cursor:pointer;}
   </div>
 </div>
 
-<div id="mainShell" style="display:none;">
+<div id="mainShell">
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
@@ -809,6 +820,17 @@ button{font-family:inherit;cursor:pointer;}
   </aside>
 
   <div class="main">
+    <nav class="public-nav" aria-label="Public navigation">
+      <div class="public-nav-links">
+        <a href="index.html" onclick="navigate('home');return false;">Home</a>
+        <a href="index.html#markets" onclick="navigate('markets');return false;">Markets</a>
+        <a href="index.html#features" onclick="navigate('stocks');return false;">Features</a>
+        <a href="index.html#pricing" onclick="navigate('profile');return false;">Pricing</a>
+        <a href="about.html">About</a>
+        <a href="help.html">Help</a>
+      </div>
+      <div class="public-nav-cta"><a href="login.html">Login</a><a href="login.html">Get Started</a></div>
+    </nav>
     <header class="topbar">
       <div class="greet-block">
         <div class="avatar-lg">RA</div>
@@ -1527,6 +1549,10 @@ const ICO_LINKEDIN = `<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff
 const ICO_MAIL = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>`;
 
 function navigate(route, extra){
+  if(['watchlist','portfolio','alerts'].includes(route) && !PROFILE){
+    window.location.href = 'login.html';
+    return;
+  }
   STATE.route = route;
   if(extra) Object.assign(STATE, extra);
   closeMore();
@@ -1609,7 +1635,7 @@ function openChartModal(sym, range, basePriceStr){
     </div>`;
   document.getElementById('chartModal').classList.add('open');
   requestAnimationFrame(()=>drawCandleChart('modalChartWrap', base, 'modal:'+sym+':'+range));
-  fetchBackendChart(sym, range, base);
+  fetchBackendChart(sym, range, base, 'modal:'+sym+':'+range, 'modalChartWrap');
 }
 function openIndexChart(name, valStr){
   openChartModal(name, STATE.chartRange||'1M', valStr);
@@ -1666,17 +1692,19 @@ function calcRSI(candles, period){
 function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 const SERIES_CACHE = {};
-async function fetchBackendChart(sym, range, base){
+async function fetchBackendChart(sym, range, base, cacheKey, wrapId){
   try{
     const resp = await backendApi(`/api/market/chart/${encodeURIComponent(sym)}?range=${encodeURIComponent(range)}`);
     if(!resp.ok) return;
     const data = await resp.json();
     if(!Array.isArray(data.points) || !data.points.length) return;
-    SERIES_CACHE['modal:'+sym+':'+range] = data.points.map((point, index, points)=>{
+    const seriesKey = cacheKey || 'modal:'+sym+':'+range;
+    SERIES_CACHE[seriesKey] = data.points.map((point, index, points)=>{
       const close = Number(point.value) || base;
       const previous = index ? Number(points[index-1].value) || close : close;
       return {o:previous,h:Math.max(previous,close),l:Math.min(previous,close),c:close,v:0};
     });
+    if(wrapId) drawCandleChart(wrapId, base, seriesKey);
     if(document.getElementById('chartModal').classList.contains('open')) drawCandleChart('modalChartWrap', base, 'modal:'+sym+':'+range);
   }catch(e){ /* chart remains usable from the cached local series */ }
 }
@@ -1851,12 +1879,22 @@ function renderHome(){
   ${pageHead('Home', headline, `${MARKET_PULSE.score.tag} · ${MARKET_PULSE.advDec.val} advancing — here is what LedgerView Research is calling right now.`)}
 
   <div class="status-dot-row"><span class="dot ${marketStatusLabel().open?'live':''}"></span>${marketStatusLabel().text}</div>
+  <div class="market-meta"><span id="homeMarketStatus">Market status: ${marketStatusLabel().open?'Live':'Closed'}</span><span id="homeLastUpdated">Last Updated: ${LIVE_FETCH_STATE.lastUpdated ? istDateStr(LIVE_FETCH_STATE.lastUpdated) : 'Waiting for feed'}</span><span>Source: Angel One SmartAPI</span></div>
   <div class="idx-row">
     ${INDICES.slice(0,4).map(i=>`
       <div class="idx-card" onclick="openIndexChart('${i.name}','${i.val}')">
         <div class="idx-name">${i.dir==='up'?'▲':'▼'} ${i.name}</div>
         <div class="idx-val">${i.val}</div>
         <div class="idx-chg ${i.dir}">${i.chg} (${i.pct})</div>
+      </div>`).join('')}
+  </div>
+
+  ${secHead('','Live Charts','Live Markets', `navigate('livemarkets')`)}
+  <div class="home-chart-grid">
+    ${['NIFTY 50','BANK NIFTY','RELIANCE','HDFCBANK'].map((sym,i)=>`
+      <div class="card home-chart-card" onclick="openChartModal('${sym}','1D','${i<2 ? (INDICES[i]||{}).val : (STOCKS.find(s=>s.sym===sym)||{}).price || '0'}')">
+        <div class="list-row" style="border:none;padding:0;"><span class="sym-cell">${sym}</span><span class="stat-label">Live</span></div>
+        <canvas id="homeChart${i}" aria-label="${sym} live chart"></canvas>
       </div>`).join('')}
   </div>
 
@@ -2975,6 +3013,35 @@ function render(){
     const range = STATE.chartRange || '1M';
     requestAnimationFrame(()=>drawCandleChart('inlineChartWrap', base, 'inline:'+sym+':'+range));
   }
+  if(STATE.route === 'home') requestAnimationFrame(drawHomeCharts);
+}
+
+function drawHomeCharts(){
+  ['NIFTY 50','BANK NIFTY','RELIANCE','HDFCBANK'].forEach((sym,i)=>{
+    const canvas = document.getElementById('homeChart'+i);
+    if(!canvas) return;
+    const base = i < 2 ? parseBase((INDICES[i]||{}).val) : parseBase((STOCKS.find(s=>s.sym===sym)||{}).price || '0');
+    const wrapId = 'homeChartWrap'+i;
+    let wrap = document.getElementById(wrapId);
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = wrapId;
+      wrap.className = 'chart-canvas-wrap';
+      canvas.replaceWith(wrap);
+      wrap.appendChild(canvas);
+    }
+    if(!wrap.querySelector('.chart-price-canvas')){
+      canvas.className = 'chart-price-canvas';
+      const volumeCanvas = document.createElement('canvas');
+      const rsiCanvas = document.createElement('canvas');
+      volumeCanvas.className = 'chart-vol-canvas';
+      rsiCanvas.className = 'chart-rsi-canvas';
+      wrap.appendChild(volumeCanvas);
+      wrap.appendChild(rsiCanvas);
+    }
+    drawCandleChart(wrapId, base, 'home:'+sym);
+    fetchBackendChart(sym,'1D',base,'home:'+sym,wrapId).catch(()=>{});
+  });
 }
 
 document.getElementById('globalSearch').addEventListener('focus', ()=>navigate('search'));
@@ -3006,7 +3073,6 @@ function jitterChip(chgStr, dir){
 let LIVE_FETCH_STATE = {status:'idle', lastUpdated:null}; // idle | loading | ok | error
 
 async function fetchRealLiveMarketData(){
-  if(!PROFILE) return;
   if(LIVE_FETCH_STATE.status === 'loading') return;
   LIVE_FETCH_STATE.status = 'loading';
   renderShell();
@@ -3092,12 +3158,10 @@ NIFTY 50/SENSEX/BANK NIFTY/GIFT NIFTY are NSE/BSE India index levels. GOLD/SILVE
   }
   render();
 }
-setInterval(()=>{
-  if(nseEquityStatus().open) fetchRealLiveMarketData();
-}, 60*1000); // re-fetch real data every minute while the Indian market is open
+setInterval(()=>fetchRealLiveMarketData(), 15*1000);
 
 function tickLiveData(){
-  if(!PROFILE) return;
+  if(!PROFILE && STATE.route !== 'home') return;
   const equityOpen = nseEquityStatus().open;
   const commodityOpen = mcxCommodityStatus().open;
 
@@ -3384,7 +3448,13 @@ function removeFromWatchlist(listName, sym){
 }
 
 populateCountrySelect();
-loadBackendUrl().then(()=>testBackendConnection());
+loadBackendUrl().then(()=>{
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('mainShell').style.display = 'block';
+  render();
+  testBackendConnection();
+  fetchRealLiveMarketData();
+});
 
 </script>
 </body>
