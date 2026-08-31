@@ -362,13 +362,19 @@ router.get('/stock/:symbol', async (req, res) => {
 });
 
 router.get('/chart/:symbol', async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase();
+  const range = req.query.range || '1M';
   try {
-    const symbol = req.params.symbol.toUpperCase();
-    const range = req.query.range || '1M';
     const chart = await angelOne.getChartSeries(symbol, range);
     res.json({ ...chart, source: 'Angel One SmartAPI' });
   } catch (err) {
-    res.status(502).json({ error: err.message, source: 'Angel One SmartAPI' });
+    res.status(200).json({
+      symbol,
+      range,
+      points: [],
+      error: { code: 'CHART_DATA_UNAVAILABLE', message: err.message },
+      source: 'Chart providers unavailable',
+    });
   }
 });
 

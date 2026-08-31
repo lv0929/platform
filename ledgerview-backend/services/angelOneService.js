@@ -37,7 +37,57 @@ const SECONDARY_CHART_TICKERS = {
   BANKNIFTY: '^NSEBANK',
   RELIANCE: 'RELIANCE.NS',
   HDFCBANK: 'HDFCBANK.NS',
+  ICICIBANK: 'ICICIBANK.NS',
+  TCS: 'TCS.NS',
 };
+
+const CHART_CACHE_TTLS = {
+  '1D': 60 * 1000,
+  '1W': 5 * 60 * 1000,
+  '1M': 15 * 60 * 1000,
+  '3M': 30 * 60 * 1000,
+  '1Y': 60 * 60 * 1000,
+};
+const CHART_PROVIDER_MIN_INTERVAL_MS = Number(process.env.CHART_PROVIDER_MIN_INTERVAL_MS || 1000);
+const chartCache = new Map();
+const chartInFlight = new Map();
+const chartQueue = [];
+let chartQueueActive = false;
+let chartLastProviderRequestAt = 0;
+
+function normalizedChartRange(range) {
+  const value = String(range || '1M').trim().toUpperCase();
+  return CHART_CACHE_TTLS[value] ? value : '1M';
+}
+
+function chartCacheKey(symbol, range) {
+  return `${symbol}_${range}`;
+}
+
+function enqueueChartProviderRequest(task) {
+  return new Promise((resolve, reject) => {
+    chartQueue.push({ task, resolve, reject });
+    drainChartQueue();
+  });
+}
+
+async function drainChartQueue() {
+  if (chartQueueActive || chartQueue.length === 0) return;
+  chartQueueActive = true;
+  const wait = Math.max(0, CHART_PROVIDER_MIN_INTERVAL_MS - (Date.now() - chartLastProviderRequestAt));
+  if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+
+  const request = chartQueue.shift();
+  chartLastProviderRequestAt = Date.now();
+  try {
+    request.resolve(await request.task());
+  } catch (error) {
+    request.reject(error);
+  } finally {
+    chartQueueActive = false;
+    drainChartQueue();
+  }
+}
 
 function normalizeIndexName(name) {
   const raw = String(name || '').trim();
@@ -493,7 +543,7 @@ async function getGainersLosers(symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK'
   };
 }
 
-async function getChartSeries(symbol, range = '1M') {
+async function fetchChartSeriesUncached(symbol, range = '1M') {
   const normalized = String(symbol || '').trim().toUpperCase();
   const aliasInstrument = normalizeChartSymbol(normalized);
   const universe = await loadInstrumentMaster();
@@ -542,8 +592,12 @@ async function getChartSeries(symbol, range = '1M') {
       })),
     };
   } catch (error) {
+    if (error.response?.status === 429 || /429/.test(String(error.message))) {
+      console.warn(`[chart] Angel One 429 for ${normalized}_${range}`);
+    }
     const ticker = SECONDARY_CHART_TICKERS[normalized];
     if (!ticker) throw error;
+    console.warn(`[chart] Fallback Activated for ${normalized}_${range}`);
 
     const yahooInterval = { '1D': '5m', '1W': '1h', '1M': '1d', '3M': '1d', '1Y': '1d' }[String(range).trim().toUpperCase()] || '1d';
     const period1 = Math.floor(start.getTime() / 1000);
@@ -568,6 +622,41 @@ async function getChartSeries(symbol, range = '1M') {
     if (!points.length) throw new Error('Historical chart data unavailable from primary and secondary providers');
     return { symbol: normalized, exchange: instrument.exchange, range, interval, points };
   }
+}
+
+async function getChartSeries(symbol, range = '1M') {
+  const normalized = String(symbol || '').trim().toUpperCase();
+  const normalizedRange = normalizedChartRange(range);
+  const key = chartCacheKey(normalized, normalizedRange);
+  const cached = chartCache.get(key);
+  if (cached && Date.now() - cached.cachedAt < CHART_CACHE_TTLS[normalizedRange]) {
+    console.info(`[chart] Cache Hit ${key}`);
+    return { ...cached.data, cached: true };
+  }
+
+  if (chartInFlight.has(key)) {
+    console.info(`[chart] Cache Miss ${key}; joining queued request`);
+    return chartInFlight.get(key);
+  }
+
+  console.info(`[chart] Cache Miss ${key}`);
+  const request = enqueueChartProviderRequest(() => fetchChartSeriesUncached(normalized, normalizedRange))
+    .then((data) => {
+      chartCache.set(key, { data, cachedAt: Date.now() });
+      return data;
+    })
+    .catch((error) => {
+      const stale = chartCache.get(key);
+      if (stale) {
+        console.warn(`[chart] Fallback Activated using stale cache ${key}`);
+        return { ...stale.data, cached: true, stale: true };
+      }
+      throw error;
+    })
+    .finally(() => chartInFlight.delete(key));
+
+  chartInFlight.set(key, request);
+  return request;
 }
 
 module.exports = {
