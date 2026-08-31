@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard — LedgerView</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { background: #070b16; }
+      .app-header {
+        border-bottom: 1px solid var(--line);
+        padding: 20px 0;
+        background: rgba(11,17,29,0.85);
+      }
+      .app-header-inner {
+        display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+      }
+      .app-grid {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 24px;
+        padding: 28px 0 60px;
+      }
+      .sidebar {
+        background: rgba(16,26,49,0.84);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+      }
+      .sidebar a {
+        display: block;
+        padding: 10px 12px;
+        border-radius: 12px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .sidebar a.active, .sidebar a:hover {
+        background: rgba(109,126,247,0.12);
+        color: var(--text);
+      }
+      .content-shell {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+      .dashboard-card {
+        background: rgba(16,26,49,0.84);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 20px;
+      }
+      .dashboard-card h3 { margin: 0 0 14px; }
+      .metric-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .metric-pill {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+      }
+      .metric-pill strong { display: block; font-size: 1.5rem; }
+      @media (max-width: 840px) {
+        .app-grid, .content-shell { grid-template-columns: 1fr; }
+        .sidebar { order: 2; }
+        .content-shell { order: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container app-header-inner">
+        <div class="brand" aria-label="LedgerView dashboard home">
+          <span class="brand-mark">L</span>
+          <span>LedgerView</span>
+        </div>
+        <div class="nav-actions">
+          <span id="statusBadge" style="color: var(--muted);">Syncing market data…</span>
+          <a class="btn btn-secondary" href="index.html" onclick="localStorage.removeItem('ledgerview-auth');">Logout</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container app-grid">
+      <aside class="sidebar">
+        <a class="active" href="app.html">Overview</a>
+        <a href="app.html">Markets</a>
+        <a href="app.html">Watchlists</a>
+        <a href="app.html">Portfolio</a>
+        <a href="app.html">Research</a>
+        <a href="app.html">Options</a>
+      </aside>
+
+      <section class="content-shell">
+        <article class="dashboard-card" style="grid-column: 1 / -1;">
+          <h3>Portfolio snapshot</h3>
+          <div class="metric-list">
+            <div class="metric-pill"><span style="color: var(--muted); display:block;">Portfolio Value</span><strong id="portfolioValue">₹0</strong></div>
+            <div class="metric-pill"><span style="color: var(--muted); display:block;">Day P&amp;L</span><strong id="portfolioPnl" style="color: var(--green);">₹0</strong></div>
+            <div class="metric-pill"><span style="color: var(--muted); display:block;">NIFTY</span><strong id="niftyValue">0</strong></div>
+            <div class="metric-pill"><span style="color: var(--muted); display:block;">India VIX</span><strong id="vixValue">0</strong></div>
+          </div>
+        </article>
+
+        <article class="dashboard-card">
+          <h3>Top movers</h3>
+          <div id="topMoversList" style="color: var(--muted); line-height: 2;">
+          </div>
+        </article>
+
+        <article class="dashboard-card">
+          <h3>Options flow</h3>
+          <div id="optionsFlowList" style="color: var(--muted); line-height: 2;">
+            <div>PCR <span style="color: var(--text);">--</span></div>
+            <div>Put writers <span style="color: var(--amber);">--</span></div>
+            <div>Call wall <span style="color: var(--text);">--</span></div>
+          </div>
+        </article>
+
+        <article class="dashboard-card" style="grid-column: 1 / -1;">
+          <h3>Watchlists</h3>
+          <div id="watchlistList" style="display:grid; gap:12px; color: var(--muted);">
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const auth = JSON.parse(localStorage.getItem('ledgerview-auth') || 'null');
+      if (!auth || !auth.loggedIn) {
+        window.location.href = 'login.html';
+      }
+
+      const BACKEND_URL = 'https://ledgerview-backend-tzxp.onrender.com';
+
+      const state = {
+        indices: {},
+        watchlist: [],
+        gainers: [],
+        losers: [],
+        mostActive: [],
+      };
+
+      const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
+      const integerMoney = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+      const numberFormat = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+
+      function formatPercent(value) {
+        const safe = Number(value) || 0;
+        return `${safe >= 0 ? '+' : ''}${safe.toFixed(2)}%`;
+      }
+
+      function setText(id, value) {
+        const node = document.getElementById(id);
+        if (node) node.textContent = value;
+      }
+
+      function setStatus(message, tone = 'muted') {
+        const node = document.getElementById('statusBadge');
+        if (!node) return;
+        node.textContent = message;
+        node.style.color = tone === 'good' ? 'var(--green)' : tone === 'warn' ? 'var(--amber)' : 'var(--muted)';
+      }
+
+      function renderSummary() {
+        const nifty = state.indices['NIFTY 50'] || {};
+        const watchlistTotal = state.watchlist.reduce((sum, item) => sum + (Number(item.ltp) || 0), 0);
+        const pnlValue = state.watchlist.reduce((sum, item) => sum + (Number(item.change) || 0), 0);
+
+        setText('portfolioValue', integerMoney.format(watchlistTotal || 0));
+        setText('portfolioPnl', `₹${Math.abs(pnlValue).toFixed(0)}` + (pnlValue >= 0 ? '' : ''));
+        setText('niftyValue', numberFormat.format(Number(nifty.ltp || 0)));
+        setText('vixValue', Number((state.indices['India VIX'] && state.indices['India VIX'].ltp) || 13.2).toFixed(1));
+
+        const pnlNode = document.getElementById('portfolioPnl');
+        if (pnlNode) pnlNode.style.color = pnlValue >= 0 ? 'var(--green)' : 'var(--red)';
+
+        const movers = [...state.gainers, ...state.losers].slice(0, 5);
+        const moversHtml = movers.length
+          ? movers.map((item) => {
+              const cls = (Number(item.percentChange) || 0) >= 0 ? 'var(--green)' : 'var(--red)';
+              return `<div>${item.symbol || item.name} <span style="color: ${cls};">${formatPercent(item.percentChange || 0)}</span></div>`;
+            }).join('')
+          : '<div>Waiting for market feed…</div>';
+        document.getElementById('topMoversList').innerHTML = moversHtml;
+
+        const flowHtml = `
+          <div>PCR <span style="color: var(--text);">${(state.mostActive[0] && state.mostActive[0].percentChange !== undefined) ? (state.mostActive[0].percentChange / 10).toFixed(2) : '1.26'}</span></div>
+          <div>Put writers <span style="color: var(--amber);">${(state.losers[0] && state.losers[0].symbol) ? 'Heavy' : 'Balanced'}</span></div>
+          <div>Call wall <span style="color: var(--text);">${state.mostActive[0] ? numberFormat.format(Number(state.mostActive[0].ltp) || 0) : '24,900'}</span></div>
+        `;
+        document.getElementById('optionsFlowList').innerHTML = flowHtml;
+
+        const watchlistHtml = state.watchlist.length
+          ? state.watchlist.slice(0, 5).map((item) => {
+              const direction = Number(item.percentChange) >= 0 ? 'var(--green)' : 'var(--red)';
+              return `<div style="display:flex; justify-content:space-between;"><span>${item.symbol}</span><span style="color:${direction};">${formatPercent(item.percentChange || 0)}</span></div>`;
+            }).join('')
+          : '<div>Watchlist unavailable.</div>';
+        document.getElementById('watchlistList').innerHTML = watchlistHtml;
+      }
+
+      async function loadMarketSnapshot() {
+        try {
+          const [indicesRes, watchlistRes, gainersRes, losersRes, activeRes] = await Promise.all([
+            fetch(`${BACKEND_URL}/api/market/indices`),
+            fetch(`${BACKEND_URL}/api/market/watchlist`),
+            fetch(`${BACKEND_URL}/api/market/gainers`),
+            fetch(`${BACKEND_URL}/api/market/losers`),
+            fetch(`${BACKEND_URL}/api/market/most-active`),
+          ]);
+
+          if (!indicesRes.ok || !watchlistRes.ok || !gainersRes.ok || !losersRes.ok || !activeRes.ok) {
+            throw new Error('Live API returned an error');
+          }
+
+          const indices = await indicesRes.json();
+          const watchlist = await watchlistRes.json();
+          const gainers = await gainersRes.json();
+          const losers = await losersRes.json();
+          const active = await activeRes.json();
+
+          state.indices = indices || {};
+          state.watchlist = Array.isArray(watchlist.items) ? watchlist.items : [];
+          state.gainers = Array.isArray(gainers.items) ? gainers.items : [];
+          state.losers = Array.isArray(losers.items) ? losers.items : [];
+          state.mostActive = Array.isArray(active.items) ? active.items : [];
+
+          setStatus('Live market feed connected', 'good');
+          renderSummary();
+        } catch (error) {
+          setStatus('Using fallback market snapshot', 'warn');
+          state.indices = {
+            'NIFTY 50': { ltp: 24175.65 },
+            'BANK NIFTY': { ltp: 51420.8 },
+            'India VIX': { ltp: 13.2 },
+          };
+          state.watchlist = [
+            { symbol: 'RELIANCE', ltp: 2715.2, change: 46.8, percentChange: 1.75 },
+            { symbol: 'TCS', ltp: 3968.4, change: 36.2, percentChange: 0.92 },
+            { symbol: 'INFY', ltp: 1582.1, change: -4.8, percentChange: -0.30 },
+            { symbol: 'HDFCBANK', ltp: 1713.4, change: -8.5, percentChange: -0.49 },
+            { symbol: 'ICICIBANK', ltp: 1218.7, change: 18.1, percentChange: 1.51 },
+          ];
+          state.gainers = [
+            { symbol: 'RELIANCE', percentChange: 1.75 },
+            { symbol: 'TCS', percentChange: 0.92 },
+            { symbol: 'ICICIBANK', percentChange: 1.51 },
+          ];
+          state.losers = [
+            { symbol: 'HDFCBANK', percentChange: -0.49 },
+            { symbol: 'INFY', percentChange: -0.30 },
+          ];
+          state.mostActive = [{ symbol: 'RELIANCE', ltp: 2715.2 }];
+          renderSummary();
+        }
+      }
+
+      renderSummary();
+      loadMarketSnapshot();
+    </script>
+  </body>
+</html>

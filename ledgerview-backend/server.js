@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { connectDB } = require('./config/db');
+const angelOne = require('./services/angelOneService');
 
 const authRoutes = require('./routes/auth');
 const watchlistRoutes = require('./routes/watchlists');
@@ -33,6 +34,19 @@ app.use((err, req, res, next) => {
 
 async function startServer(port = process.env.PORT || 4000) {
   await connectDB();
+
+  const hasAngelCreds = ['ANGEL_API_KEY', 'ANGEL_CLIENT_CODE', 'ANGEL_MPIN', 'ANGEL_TOTP_SECRET'].every((key) => !!process.env[key]);
+  if (hasAngelCreds) {
+    try {
+      await angelOne.login();
+      console.log('[server] Angel One session authenticated successfully');
+    } catch (err) {
+      console.warn('[server] Angel One startup auth failed:', err.message);
+    }
+  } else {
+    console.warn('[server] Angel One credentials not configured; live market data will be unavailable until env vars are added.');
+  }
+
   return app.listen(port, () => console.log(`[server] LedgerView backend listening on :${port}`));
 }
 

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — LedgerView</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+      .auth-shell {
+        width: min(480px, calc(100% - 32px));
+        background: rgba(16,26,49,0.86);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 28px;
+        box-shadow: var(--shadow);
+      }
+      .auth-header { margin-bottom: 24px; }
+      .auth-header h1 { margin: 10px 0 8px; font-size: clamp(2rem, 5vw, 2.6rem); }
+      .auth-header p { margin: 0; color: var(--muted); }
+      .auth-form .field { margin-bottom: 18px; }
+      .auth-footer { margin-top: 16px; color: var(--muted); font-size: 0.92rem; }
+      .auth-footer a { color: var(--text); }
+      .message { min-height: 22px; margin-bottom: 12px; font-size: 0.95rem; color: var(--muted); }
+      .message.error { color: var(--red); }
+      .message.success { color: var(--green); }
+    </style>
+  </head>
+  <body>
+    <main class="auth-shell">
+      <div class="auth-header">
+        <a href="index.html" class="brand" aria-label="LedgerView home">
+          <span class="brand-mark">L</span>
+          <span>LedgerView</span>
+        </a>
+        <h1>Welcome back</h1>
+        <p>Sign in to access your intelligence dashboard.</p>
+      </div>
+
+      <form class="auth-form" id="loginForm">
+        <div class="field">
+          <label for="phone">Phone number</label>
+          <input id="phone" type="tel" value="+919876543210" placeholder="+91 98765 43210" required />
+        </div>
+        <div class="field">
+          <label for="otp">OTP</label>
+          <input id="otp" type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit OTP" required />
+        </div>
+        <div class="message" id="message"></div>
+        <button class="btn btn-primary" type="submit" style="width:100%;">Continue</button>
+      </form>
+
+      <div class="auth-footer">
+        Demo mode: enter any valid 6-digit OTP to continue. <a href="index.html">Back to home</a>
+      </div>
+    </main>
+
+    <script>
+      const form = document.getElementById('loginForm');
+      const message = document.getElementById('message');
+      const phoneInput = document.getElementById('phone');
+      const otpInput = document.getElementById('otp');
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const phone = phoneInput.value.trim();
+        const otp = otpInput.value.trim();
+
+        if (!/^\+?[0-9\s-]{8,}$/.test(phone)) {
+          message.textContent = 'Please enter a valid phone number.';
+          message.className = 'message error';
+          return;
+        }
+
+        if (!/^\d{6}$/.test(otp)) {
+          message.textContent = 'Please enter the 6-digit OTP.';
+          message.className = 'message error';
+          return;
+        }
+
+        message.textContent = 'Authentication successful. Redirecting to your dashboard…';
+        message.className = 'message success';
+        localStorage.setItem('ledgerview-auth', JSON.stringify({ phone, loggedIn: true, name: 'Demo Investor' }));
+        setTimeout(() => {
+          window.location.href = 'app.html';
+        }, 700);
+      });
+    </script>
+  </body>
+</html>
