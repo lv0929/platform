@@ -168,6 +168,34 @@ button{font-family:inherit;cursor:pointer;}
 .backend-status .dot{width:6px;height:6px;flex:0 0 6px;}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.public-shell .sidebar,.public-shell .topbar,.public-shell .quicktabs,.public-shell .assistant-fab{display:none;}
+.public-shell .public-nav{position:sticky;top:0;z-index:40;}
+.public-shell .main{width:100%;}
+.public-hero{padding:72px 0 48px;background:linear-gradient(135deg,var(--bg-elev),var(--bg));border-bottom:1px solid var(--rule-hair);}
+.public-hero h1{max-width:760px;font-family:var(--font-display);font-size:clamp(42px,7vw,82px);line-height:1.02;color:var(--paper);font-weight:500;}
+.public-hero p{max-width:620px;margin:18px 0 24px;color:var(--ink-dim);font-size:17px;line-height:1.6;}
+.public-hero-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.public-section{padding:34px 0;}
+.public-section h2{font-family:var(--font-display);font-size:30px;color:var(--paper);margin-bottom:18px;}
+.public-market-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.public-market-card{min-height:124px;padding:16px;background:var(--card);border:1px solid var(--rule-hair);border-radius:var(--radius);}
+.public-market-card .value{font-family:var(--font-mono);font-size:22px;color:var(--paper);margin:12px 0 5px;}
+.public-market-card .change{font-family:var(--font-mono);font-size:11px;}
+.public-lists{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+.public-list{padding:16px;background:var(--card);border:1px solid var(--rule-hair);border-radius:var(--radius);}
+.public-list h3{font-size:14px;color:var(--paper);margin-bottom:12px;}
+.public-list-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule-hair);font-family:var(--font-mono);font-size:11px;}
+.public-list-row:last-child{border-bottom:0;}
+.public-search{position:relative;max-width:680px;}
+.public-search input{width:100%;background:var(--bg-elev);border:1px solid var(--rule-hair);border-radius:10px;padding:13px 15px;color:var(--ink);font:13px var(--font-sans);outline:none;}
+.public-search-results{position:absolute;left:0;right:0;top:48px;z-index:20;background:var(--card);border:1px solid var(--rule-hair);border-radius:10px;overflow:hidden;}
+.public-search-results button{display:flex;width:100%;justify-content:space-between;padding:12px 14px;background:transparent;border:0;border-bottom:1px solid var(--rule-hair);color:var(--ink);text-align:left;}
+.public-search-results button:hover{background:var(--card-hi);}
+.public-feature-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
+.public-feature{padding:16px 0;border-top:2px solid var(--brass);}.public-feature h3{font-size:14px;color:var(--paper);margin-bottom:7px;}.public-feature p{font-size:12px;color:var(--ink-dim);line-height:1.5;}
+.public-footer{padding:34px 0;border-top:1px solid var(--rule-hair);color:var(--ink-faint);font-size:12px;line-height:1.7;}
+@media(max-width:850px){.public-market-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.public-lists{grid-template-columns:1fr;}.public-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:520px){.public-hero{padding:48px 0 32px;}.public-hero h1{font-size:43px;}.public-hero p{font-size:15px;}.public-market-grid,.public-feature-grid{grid-template-columns:1fr;}}
 .public-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 28px;border-bottom:1px solid var(--rule-hair);background:var(--bg-elev);}
 .public-nav-links{display:flex;align-items:center;gap:18px;font-size:13px;color:var(--ink-dim);}
 .public-nav-links a:hover{color:var(--paper);}
@@ -824,8 +852,9 @@ button{font-family:inherit;cursor:pointer;}
       <div class="public-nav-links">
         <a href="index.html" onclick="navigate('home');return false;">Home</a>
         <a href="index.html#markets" onclick="navigate('markets');return false;">Markets</a>
-        <a href="index.html#features" onclick="navigate('stocks');return false;">Features</a>
-        <a href="index.html#pricing" onclick="navigate('profile');return false;">Pricing</a>
+        <a href="index.html#research" onclick="navigate('research');return false;">Research</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#pricing">Pricing</a>
         <a href="about.html">About</a>
         <a href="help.html">Help</a>
       </div>
@@ -1542,6 +1571,9 @@ function marketStatusLabel(){
 }
 
 let STATE = {route:'home', lang:'en', stockSym:'HDFCBANK', foTab:'NIFTY', newsTab:'All', watchlistTab:'My Stocks', researchTab:'Stocks', stockTab:'Stocks', fiiView:'Daily', tradesTab:'Intraday'};
+const PUBLIC_SYMBOLS = ['NIFTY 50','BANK NIFTY','SENSEX','RELIANCE','HDFCBANK','ICICIBANK','TCS','INFY'];
+const PUBLIC_TICKER = PUBLIC_SYMBOLS.map(name=>({name,val:'—',chg:'—',dir:'up'}));
+const PUBLIC_MARKET = {indices:{}, stocks:[], gainers:[], losers:[], active:[], lastUpdated:null, status:'loading', search:[]};
 
 // ===================== BRAND ICON GLYPHS (inline SVG) =====================
 const ICO_INSTAGRAM = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="17.2" cy="6.8" r="1.15" fill="#fff" stroke="none"/></svg>`;
@@ -1549,7 +1581,7 @@ const ICO_LINKEDIN = `<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff
 const ICO_MAIL = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>`;
 
 function navigate(route, extra){
-  if(['watchlist','portfolio','alerts'].includes(route) && !PROFILE){
+  if(['watchlist','portfolio','alerts','settings'].includes(route) && !PROFILE){
     window.location.href = 'login.html';
     return;
   }
@@ -1562,6 +1594,7 @@ function navigate(route, extra){
 
 // ===================== SHELL RENDER =====================
 function renderShell(){
+  document.getElementById('mainShell').classList.toggle('public-shell', !PROFILE);
   const sideEl = document.getElementById('sidebarNav');
   sideEl.innerHTML = `<div class="nav-label">${tr('Navigate')}</div>` + SIDEBAR_NAV.map((n,i)=>`
     <a class="nav-item ${STATE.route===n.id?'active':''}" href="javascript:void(0)" onclick="navigate('${n.id}');return false;">
@@ -1584,7 +1617,8 @@ function renderShell(){
   document.getElementById('moreGrid').innerHTML = MORE_MENU.map(n=>`
     <a href="javascript:void(0)" onclick="navigate('${n.id}');return false;"><span style="font-size:18px;">${n.ico}</span>${tr(n.label)}</a>`).join('');
 
-  const tickerHtml = TICKER.map(t=>`
+  const tickerSource = STATE.route==='home' && !PROFILE ? PUBLIC_TICKER : TICKER;
+  const tickerHtml = tickerSource.map(t=>`
     <div class="ticker-item" style="cursor:pointer;" onclick="openIndexChart('${t.name}','${t.val}')">
       <span class="tname">${t.name}</span><span class="tval">${t.val}</span>
       <span class="tchg ${t.dir}"><span class="arrow">${t.dir==='up'?'▲':'▼'}</span>${t.chg}</span>
@@ -1643,26 +1677,6 @@ function openIndexChart(name, valStr){
 function closeChartModal(){ document.getElementById('chartModal').classList.remove('open'); }
 
 // ===================== CANDLESTICK CHART ENGINE =====================
-// Illustrative price-action generator anchored to a real current level (see
-// openChartModal/openIndexChart callers). Not a live tick feed — a static
-// prototype can't stream licensed exchange data — but every candle, the
-// SMA20 overlay, volume bars and RSI(14) below are computed live from it,
-// exactly like a real charting package would render them.
-function genSeries(base, n){
-  let price = base;
-  const out = [];
-  for(let i=0;i<n;i++){
-    const vol = base*0.006;
-    const open = price;
-    const close = Math.max(0.01, open + (Math.random()-0.5)*vol*2);
-    const high = Math.max(open,close) + Math.random()*vol*0.5;
-    const low = Math.max(0.01, Math.min(open,close) - Math.random()*vol*0.5);
-    const volume = Math.round(400000 + Math.random()*2200000);
-    out.push({o:open,h:high,l:low,c:close,v:volume});
-    price = close;
-  }
-  return out;
-}
 function calcSMA(candles, period){
   const out = new Array(candles.length).fill(null);
   for(let i=period-1;i<candles.length;i++){
@@ -1704,9 +1718,19 @@ async function fetchBackendChart(sym, range, base, cacheKey, wrapId){
       const previous = index ? Number(points[index-1].value) || close : close;
       return {o:previous,h:Math.max(previous,close),l:Math.min(previous,close),c:close,v:0};
     });
+    localStorage.setItem('ledgerview-chart-'+seriesKey, JSON.stringify(SERIES_CACHE[seriesKey]));
     if(wrapId) drawCandleChart(wrapId, base, seriesKey);
     if(document.getElementById('chartModal').classList.contains('open')) drawCandleChart('modalChartWrap', base, 'modal:'+sym+':'+range);
-  }catch(e){ /* chart remains usable from the cached local series */ }
+  }catch(e){
+    const cached = localStorage.getItem('ledgerview-chart-'+(cacheKey || 'modal:'+sym+':'+range));
+    if(cached){
+      try{
+        const seriesKey = cacheKey || 'modal:'+sym+':'+range;
+        SERIES_CACHE[seriesKey] = JSON.parse(cached);
+        if(wrapId) drawCandleChart(wrapId, base, seriesKey);
+      }catch(error){ /* ignore invalid browser cache */ }
+    }
+  }
 }
 function drawCandleChart(wrapId, basePrice, cacheKey){
   const wrap = document.getElementById(wrapId);
@@ -1716,10 +1740,10 @@ function drawCandleChart(wrapId, basePrice, cacheKey){
   const rsiCv = wrap.querySelector('.chart-rsi-canvas');
   if(!priceCv) return;
 
-  const n = 60;
+  const n = candles.length;
   const key = cacheKey || ('anon:'+basePrice);
-  let candles = SERIES_CACHE[key];
-  if(!candles){ candles = genSeries(basePrice, n); SERIES_CACHE[key] = candles; }
+  const candles = SERIES_CACHE[key];
+  if(!candles) return;
   const sma20 = calcSMA(candles, 20);
   const rsi14 = calcRSI(candles, 14);
 
@@ -1866,6 +1890,63 @@ function secHead(folio,title,linkTxt,linkFn){
 }
 
 // ===================== SCREEN: HOME =====================
+function publicNumber(value){
+  return value === undefined || value === null || value === '' ? '—' : Number(value).toLocaleString('en-IN',{maximumFractionDigits:2});
+}
+function publicChange(value){
+  const number = Number(value);
+  return Number.isFinite(number) ? `${number >= 0 ? '+' : ''}${number.toFixed(2)}%` : '—';
+}
+function publicQuoteCard(name, quote){
+  const q = quote || {};
+  const positive = Number(q.percentChange || 0) >= 0;
+  return `<article class="public-market-card"><div class="stat-label">${name}</div><div class="value">${q.ltp === undefined ? '—' : publicNumber(q.ltp)}</div><div class="change ${positive?'up':'down'}">${q.change === undefined ? '—' : publicNumber(q.change)} · ${publicChange(q.percentChange)}</div></article>`;
+}
+function publicMoverRows(items){
+  if(!items || !items.length) return '<div class="public-list-row"><span>Waiting for backend data…</span><span>—</span></div>';
+  return items.slice(0,5).map(item=>`<button class="public-list-row" style="width:100%;background:none;border:0;border-bottom:1px solid var(--rule-hair);color:var(--ink);text-align:left;cursor:pointer;" onclick="navigate('stockdetail',{stockSym:'${item.symbol}'})"><span>${item.symbol}</span><span class="${Number(item.percentChange)>=0?'up':'down'}">${publicNumber(item.ltp)} · ${publicChange(item.percentChange)}</span></button>`).join('');
+}
+function renderPublicHome(){
+  const status = marketStatusLabel();
+  const indices = PUBLIC_MARKET.indices;
+  const vix = indices['India VIX'];
+  const marketCards = ['NIFTY 50','BANK NIFTY','SENSEX','India VIX'].map(name=>publicQuoteCard(name,indices[name])).join('');
+  return `
+  <section class="public-hero"><div class="container">
+    <div class="eyebrow">LedgerView · Market Intelligence</div>
+    <h1>Research. Analyze. Trade Smarter.</h1>
+    <p>AI-powered stock market intelligence platform for Indian investors and traders.</p>
+    <div class="public-hero-actions"><a class="ai-generate-btn" style="padding:12px 18px;display:inline-block;" href="login.html">Get Started</a><a class="chip" style="padding:11px 16px;display:inline-block;" href="#live-markets">View Live Markets</a></div>
+  </div></section>
+
+  <section class="public-section" id="live-markets"><div class="container">
+    <div class="status-dot-row"><span class="dot ${status.open?'live':''}"></span><span>Market ${status.open?'Open':'Closed'}</span><span class="pill">${PUBLIC_MARKET.status==='ok'?'Live':'Waiting for feed'}</span></div>
+    <div class="market-meta"><span>Last Updated: ${PUBLIC_MARKET.lastUpdated ? PUBLIC_MARKET.lastUpdated.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—'}</span><span>Source: Angel One SmartAPI</span></div>
+    <div class="public-market-grid" style="margin-top:16px;">${marketCards}</div>
+  </div></section>
+
+  <section class="public-section"><div class="container">
+    <h2>Live market dashboard</h2>
+    <div class="public-lists"><div class="public-list"><h3>Top Gainers</h3>${publicMoverRows(PUBLIC_MARKET.gainers)}</div><div class="public-list"><h3>Top Losers</h3>${publicMoverRows(PUBLIC_MARKET.losers)}</div><div class="public-list"><h3>Most Active</h3>${publicMoverRows(PUBLIC_MARKET.active)}</div></div>
+  </div></section>
+
+  <section class="public-section"><div class="container">
+    <h2>Find a stock</h2>
+    <div class="public-search"><input id="publicSearchInput" placeholder="Search Reliance, HDFC, ICICI, TCS, Motilal, Infosys…" autocomplete="off" oninput="searchPublicStocks(this.value)"><div id="publicSearchResults" class="public-search-results" hidden></div></div>
+  </div></section>
+
+  <section class="public-section"><div class="container">
+    <h2>Live charts</h2>
+    <div class="home-chart-grid">${['NIFTY 50','BANK NIFTY','RELIANCE','HDFCBANK'].map((sym,i)=>`<article class="card home-chart-card"><div class="list-row" style="border:0;padding:0;"><span class="sym-cell">${sym}</span><span class="stat-label">Backend feed</span></div><div class="chart-canvas-wrap" id="publicChartWrap${i}"><canvas class="chart-price-canvas"></canvas><canvas class="chart-vol-canvas"></canvas><canvas class="chart-rsi-canvas"></canvas></div></article>`).join('')}</div>
+  </div></section>
+
+  <section class="public-section" id="features"><div class="container"><h2>Built for better decisions</h2><div class="public-feature-grid">${[['Market Intelligence','One view for indices, movers, and market context.'],['Research Engine','Structured research for disciplined discovery.'],['Options Analytics','Understand derivatives activity before you act.'],['Portfolio Intelligence','Turn positions into a clearer decision system.'],['Investor DNA','Build a process around how you invest.']].map(item=>`<div class="public-feature"><h3>${item[0]}</h3><p>${item[1]}</p></div>`).join('')}</div></div></section>
+
+  <section class="public-section" id="faq"><div class="container"><h2>Frequently asked</h2><div class="public-list"><button class="public-list-row" onclick="togglePublicFaq(0)"><span>Is LedgerView a broker?</span><span>+</span></button><div id="publicFaq0" class="section-note" hidden>LedgerView is a research and analytics platform. It does not execute trades.</div><button class="public-list-row" onclick="togglePublicFaq(1)"><span>Where does market data come from?</span><span>+</span></button><div id="publicFaq1" class="section-note" hidden>Public market components request data from the LedgerView backend and Angel One SmartAPI.</div><button class="public-list-row" onclick="togglePublicFaq(2)"><span>Can I explore before signing in?</span><span>+</span></button><div id="publicFaq2" class="section-note" hidden>Yes. The homepage and market discovery experience are public. Account tools require login.</div></div></div></section>
+
+  <footer class="public-footer"><div class="container"><div class="grid grid-4"><div><strong>Company</strong><br>About<br>Careers<br>Contact</div><div><strong>Support</strong><br>Help Center<br>FAQ</div><div><strong>Legal</strong><br>Terms · Privacy<br>Risk Disclosure<br>Investor Charter</div><div><strong>Social</strong><br>LinkedIn · Instagram<br>Email</div></div><p style="margin-top:24px;">Investments in securities markets are subject to market risks. Read all related documents carefully before investing.<br>LedgerView is a research and analytics platform and does not execute trades or provide registered investment advice.</p></div></footer>`;
+}
+function togglePublicFaq(index){ const el=document.getElementById('publicFaq'+index); if(el) el.hidden=!el.hidden; }
 function renderHome(){
   const lead = INDICES[0];
   const headline = `${lead.name} is ${lead.dir==='up'?'up':'down'} ${lead.pct} today.`;
@@ -2168,6 +2249,15 @@ function renderStocks(){
 }
 
 // ===================== SCREEN: STOCK DETAIL =====================
+let PUBLIC_DETAIL = null;
+function renderPublicStockDetail(){
+  const symbol = STATE.stockSym || '—';
+  const quote = PUBLIC_DETAIL && PUBLIC_DETAIL.symbol===symbol ? PUBLIC_DETAIL : {};
+  return `${pageHead('Stock Detail',quote.companyName||symbol,'Live quote from the LedgerView backend.')}
+  <div class="public-market-grid">${publicQuoteCard(symbol,quote)}</div>
+  <div class="public-lists" style="margin-top:18px;"><div class="public-list"><h3>Market Data</h3><div class="public-list-row"><span>Exchange</span><span>${quote.exchange||'—'}</span></div><div class="public-list-row"><span>Volume</span><span>${publicNumber(quote.volume)}</span></div><div class="public-list-row"><span>Day High</span><span>${publicNumber(quote.high)}</span></div><div class="public-list-row"><span>Day Low</span><span>${publicNumber(quote.low)}</span></div></div><div class="public-list"><h3>Additional Metrics</h3><div class="public-list-row"><span>52 Week High</span><span>${publicNumber(quote.week52High)}</span></div><div class="public-list-row"><span>52 Week Low</span><span>${publicNumber(quote.week52Low)}</span></div><div class="public-list-row"><span>Market Cap</span><span>${publicNumber(quote.marketCap)}</span></div></div></div>
+  <div class="market-meta"><span>Last Updated: ${quote.updatedAt||'—'}</span><span>Source: Angel One SmartAPI</span></div>`;
+}
 function renderStockDetail(){
   const d = STOCK_DETAIL; // single illustrative deep page regardless of symbol clicked
   return `
@@ -2978,11 +3068,11 @@ function runAiFilter(){
 
 // ===================== ROUTER =====================
 const ROUTES = {
-  home: renderHome,
+  home: ()=>PROFILE ? renderHome() : renderPublicHome(),
   livemarkets: renderLiveMarkets,
   markets: renderMarkets,
   stocks: renderStocks,
-  stockdetail: renderStockDetail,
+  stockdetail: ()=>PROFILE ? renderStockDetail() : renderPublicStockDetail(),
   fo: renderFO,
   optionchain: renderOptionChain,
   fiidii: renderFiiDii,
@@ -3013,7 +3103,19 @@ function render(){
     const range = STATE.chartRange || '1M';
     requestAnimationFrame(()=>drawCandleChart('inlineChartWrap', base, 'inline:'+sym+':'+range));
   }
-  if(STATE.route === 'home') requestAnimationFrame(drawHomeCharts);
+  if(STATE.route === 'home' && PROFILE) requestAnimationFrame(drawHomeCharts);
+  if(STATE.route === 'stockdetail' && !PROFILE) fetchPublicQuote(STATE.stockSym);
+}
+
+async function fetchPublicQuote(symbol){
+  if(!symbol || PUBLIC_DETAIL && PUBLIC_DETAIL.symbol===symbol && PUBLIC_DETAIL.updatedAt) return;
+  try{
+    const response = await backendApi('/api/market/quote/'+encodeURIComponent(symbol));
+    if(!response.ok) throw new Error('Quote unavailable');
+    PUBLIC_DETAIL = await response.json();
+    PUBLIC_DETAIL.updatedAt = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    render();
+  }catch(error){ PUBLIC_DETAIL = {symbol, updatedAt:'Unavailable'}; render(); }
 }
 
 function drawHomeCharts(){
@@ -3073,6 +3175,7 @@ function jitterChip(chgStr, dir){
 let LIVE_FETCH_STATE = {status:'idle', lastUpdated:null}; // idle | loading | ok | error
 
 async function fetchRealLiveMarketData(){
+  if(!PROFILE){ await fetchPublicMarkets(); return; }
   if(LIVE_FETCH_STATE.status === 'loading') return;
   LIVE_FETCH_STATE.status = 'loading';
   renderShell();
@@ -3161,7 +3264,7 @@ NIFTY 50/SENSEX/BANK NIFTY/GIFT NIFTY are NSE/BSE India index levels. GOLD/SILVE
 setInterval(()=>fetchRealLiveMarketData(), 15*1000);
 
 function tickLiveData(){
-  if(!PROFILE && STATE.route !== 'home') return;
+  if(!PROFILE) return;
   const equityOpen = nseEquityStatus().open;
   const commodityOpen = mcxCommodityStatus().open;
 
@@ -3273,6 +3376,59 @@ async function fetchIndicesFromBackend(){
     });
     return any;
   }catch(e){ return false; }
+}
+async function fetchPublicMarkets(){
+  try{
+    const symbols = PUBLIC_SYMBOLS.filter(symbol=>!['NIFTY 50','BANK NIFTY','SENSEX'].includes(symbol)).join(',');
+    const responses = await Promise.all([
+      backendApi('/api/market/indices'),
+      backendApi(`/api/market/stocks?symbols=${encodeURIComponent(symbols)}`),
+      backendApi('/api/market/gainers'),
+      backendApi('/api/market/losers'),
+      backendApi('/api/market/most-active'),
+    ]);
+    if(responses.some(response=>!response.ok)) throw new Error('Market API unavailable');
+    const [indices, stocks, gainers, losers, active] = await Promise.all(responses.map(response=>response.json()));
+    PUBLIC_MARKET.indices = indices || {};
+    PUBLIC_MARKET.stocks = Array.isArray(stocks.items) ? stocks.items : [];
+    PUBLIC_MARKET.gainers = Array.isArray(gainers.items) ? gainers.items : [];
+    PUBLIC_MARKET.losers = Array.isArray(losers.items) ? losers.items : [];
+    PUBLIC_MARKET.active = Array.isArray(active.items) ? active.items : [];
+    PUBLIC_SYMBOLS.forEach(symbol=>{
+      const quote = PUBLIC_MARKET.indices[symbol] || PUBLIC_MARKET.stocks.find(item=>item.symbol===symbol);
+      const ticker = PUBLIC_TICKER.find(item=>item.name===symbol);
+      if(quote && ticker){ ticker.val=publicNumber(quote.ltp); ticker.chg=publicChange(quote.percentChange); ticker.dir=Number(quote.percentChange)>=0?'up':'down'; }
+    });
+    PUBLIC_MARKET.lastUpdated = new Date();
+    PUBLIC_MARKET.status = 'ok';
+    localStorage.setItem('ledgerview-public-market-cache', JSON.stringify(PUBLIC_MARKET));
+    updateBackendStatus('connected','Connected ✅');
+    render();
+    ['NIFTY 50','BANK NIFTY','RELIANCE','HDFCBANK'].forEach((symbol,index)=>{
+      const quote = PUBLIC_MARKET.indices[symbol] || PUBLIC_MARKET.stocks.find(item=>item.symbol===symbol);
+      fetchBackendChart(symbol,'1D',Number(quote && quote.ltp)||100,'public:'+symbol,'publicChartWrap'+index);
+    });
+  }catch(error){
+    const cached = localStorage.getItem('ledgerview-public-market-cache');
+    if(cached){
+      try{ Object.assign(PUBLIC_MARKET,JSON.parse(cached)); PUBLIC_MARKET.lastUpdated=new Date(PUBLIC_MARKET.lastUpdated); PUBLIC_MARKET.status='cached'; render(); }catch(e){ PUBLIC_MARKET.status='failed'; }
+    }else PUBLIC_MARKET.status='failed';
+    updateBackendStatus('failed','Connection Failed ❌');
+    render();
+  }
+}
+async function searchPublicStocks(query){
+  const results = document.getElementById('publicSearchResults');
+  if(!results) return;
+  if(String(query||'').trim().length<2){ results.hidden=true; results.innerHTML=''; return; }
+  try{
+    const response = await backendApi('/api/market/search?q='+encodeURIComponent(query));
+    if(!response.ok) throw new Error('Search unavailable');
+    const data = await response.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    results.innerHTML = items.map(item=>`<button onclick="navigate('stockdetail',{stockSym:'${item.symbol}'})"><span><strong>${item.symbol}</strong><br><small>${item.companyName||item.symbol} · ${item.exchange||'NSE'}</small></span><span>Open quote →</span></button>`).join('') || '<div style="padding:12px;color:var(--ink-dim);">No instruments found.</div>';
+    results.hidden=false;
+  }catch(error){ results.hidden=false; results.innerHTML='<div style="padding:12px;color:var(--bear);">Search unavailable.</div>'; }
 }
 async function fetchMarketCollectionsFromBackend(){
   try{

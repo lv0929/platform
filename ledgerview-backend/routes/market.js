@@ -22,7 +22,7 @@ function normalizeIndexPayload(name, quote) {
 
 router.get('/indices', async (req, res) => {
   try {
-    const names = ['NIFTY 50', 'BANK NIFTY', 'SENSEX'];
+    const names = ['NIFTY 50', 'BANK NIFTY', 'SENSEX', 'India VIX'];
     const results = await Promise.allSettled(names.map((n) => angelOne.getIndexQuote(n)));
     const out = {};
     results.forEach((r, i) => {
@@ -54,6 +54,17 @@ router.get('/stocks', async (req, res) => {
     const requested = symbols.length ? symbols : DEFAULT_WATCHLIST;
     const quotes = await angelOne.getMarketWatchlist(requested);
     res.json({ source: 'Angel One SmartAPI', items: quotes });
+  } catch (err) {
+    res.status(502).json({ error: err.message, source: 'Angel One SmartAPI' });
+  }
+});
+
+router.get('/search', async (req, res) => {
+  const query = String(req.query.q || '').trim();
+  if (query.length < 2) return res.json({ source: 'Angel One SmartAPI', items: [] });
+  try {
+    const matches = await angelOne.searchInstruments(query, req.query.limit);
+    res.json({ source: 'Angel One SmartAPI', items: matches });
   } catch (err) {
     res.status(502).json({ error: err.message, source: 'Angel One SmartAPI' });
   }

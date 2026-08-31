@@ -10,52 +10,16 @@ const ROUTES = {
   login: '/rest/auth/angelbroking/user/v1/loginByPassword',
   refresh: '/rest/auth/angelbroking/jwt/v1/generateTokens',
   ltp: '/rest/secure/angelbroking/order/v1/getLtpData',
+  candles: '/rest/secure/angelbroking/historical/v1/getCandleData',
   logout: '/rest/secure/angelbroking/user/v1/logout',
 };
 
 const INSTRUMENT_TOKENS = {
   'NIFTY 50': { exchange: 'NSE', tradingsymbol: 'NIFTY', symboltoken: '99926000' },
   'BANK NIFTY': { exchange: 'NSE', tradingsymbol: 'BANKNIFTY', symboltoken: '99926009' },
+  'India VIX': { exchange: 'NSE', tradingsymbol: 'INDIAVIX', symboltoken: '99926017' },
   SENSEX: { exchange: 'BSE', tradingsymbol: 'SENSEX', symboltoken: '500010' },
 };
-
-const FALLBACK_BASE_PRICES = {
-  RELIANCE: 2715.2,
-  TCS: 3968.4,
-  INFY: 1582.1,
-  HDFCBANK: 1713.4,
-  ICICIBANK: 1218.7,
-  SBIN: 857.9,
-  LTIM: 6335.4,
-  ITC: 467.3,
-  SUNPHARMA: 640.1,
-  BHARTIARTL: 1442.5,
-};
-
-const FALLBACK_INDEX_VALUES = {
-  'NIFTY 50': 24175.65,
-  'BANK NIFTY': 51420.8,
-  SENSEX: 79340.2,
-};
-
-function buildFallbackQuote(symbol, baseValue = 100) {
-  const safeSymbol = String(symbol || 'UNKNOWN').toUpperCase();
-  const price = Number(baseValue) || 100;
-  const previousClose = price * 0.992;
-  const change = Number((price - previousClose).toFixed(2));
-  const percentChange = Number(((change / previousClose) * 100).toFixed(2));
-  return {
-    symbol: safeSymbol,
-    ltp: price,
-    change,
-    percentChange,
-    open: Number((price * 0.995).toFixed(2)),
-    high: Number((price * 1.015).toFixed(2)),
-    low: Number((price * 0.985).toFixed(2)),
-    volume: 1000000,
-    previousClose,
-  };
-}
 
 const INSTRUMENT_MASTER_URL = 'https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json';
 
@@ -147,14 +111,8 @@ async function getLtp({ exchange, tradingsymbol, symboltoken }) {
 async function getIndexQuote(name) {
   const inst = INSTRUMENT_TOKENS[name];
   if (!inst) throw new Error(`No instrument token configured for "${name}"`);
-  try {
-    const data = await getLtp(inst);
-    return { name, ltp: data.ltp, previousClose: data.close || data.previousClose || data.ltp, raw: data };
-  } catch (err) {
-    const base = FALLBACK_INDEX_VALUES[name] || 100;
-    const fallback = buildFallbackQuote(name, base);
-    return { name, ltp: fallback.ltp, previousClose: fallback.previousClose, raw: fallback };
-  }
+  const data = await getLtp(inst);
+  return { name, ltp: data.ltp, previousClose: data.close || data.previousClose || data.ltp, raw: data };
 }
 
 async function loadInstrumentMaster() {
@@ -170,22 +128,32 @@ async function loadInstrumentMaster() {
   return map;
 }
 
+async function searchInstruments(query, limit = 12) {
+  const term = String(query || '').trim().toUpperCase();
+  if (!term) return [];
+  const master = await loadInstrumentMaster();
+  return Object.values(master)
+    .filter((instrument) => instrument.tradingsymbol.includes(term))
+    .slice(0, Math.min(Number(limit) || 12, 25))
+    .map((instrument) => ({
+      symbol: instrument.tradingsymbol.replace(/-EQ$/, ''),
+      companyName: instrument.tradingsymbol.replace(/-EQ$/, ''),
+      exchange: instrument.exchange,
+      token: instrument.token,
+    }));
+}
+
 async function getStockQuote(sym) {
-  try {
-    const master = await loadInstrumentMaster();
-    const key = `${sym}-EQ`;
-    const inst = master[key];
-    if (!inst) throw new Error(`Symbol "${sym}" not found in instrument master`);
-    const data = await getLtp({
-      exchange: inst.exchange,
-      tradingsymbol: inst.tradingsymbol,
-      symboltoken: inst.token,
-    });
-    return { sym, ltp: data.ltp, previousClose: data.close || data.previousClose || data.ltp, raw: data };
-  } catch (err) {
-    const base = FALLBACK_BASE_PRICES[String(sym).toUpperCase()] || 100;
-    return { sym: String(sym).toUpperCase(), ltp: base, previousClose: base * 0.993, raw: buildFallbackQuote(sym, base) };
-  }
+  const master = await loadInstrumentMaster();
+  const key = `${sym}-EQ`;
+  const inst = master[key];
+  if (!inst) throw new Error(`Symbol "${sym}" not found in instrument master`);
+  const data = await getLtp({
+    exchange: inst.exchange,
+    tradingsymbol: inst.tradingsymbol,
+    symboltoken: inst.token,
+  });
+  return { sym, ltp: data.ltp, previousClose: data.close || data.previousClose || data.ltp, raw: data };
 }
 
 function toSafeNumber(value, fallback = 0) {
@@ -216,13 +184,8 @@ function normalizeQuote(symbol, raw) {
 }
 
 async function getQuote(symbol) {
-  try {
-    const quote = await getStockQuote(String(symbol).toUpperCase());
-    return normalizeQuote(symbol, quote.raw || quote);
-  } catch (err) {
-    const base = FALLBACK_BASE_PRICES[String(symbol).toUpperCase()] || 100;
-    return buildFallbackQuote(symbol, base);
-  }
+  const quote = await getStockQuote(String(symbol).toUpperCase());
+  return normalizeQuote(symbol, quote.raw || quote);
 }
 
 async function getMarketWatchlist(symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'LTIM', 'ITC']) {
@@ -246,40 +209,29 @@ async function getGainersLosers(symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK'
   };
 }
 
-function buildChartSeries(baseValue, range = '1D') {
-  const points = [];
-  const now = new Date();
-  const totalPoints = 30;
-  for (let i = 0; i < totalPoints; i += 1) {
-    const step = (range === '1D' ? 0.9 : range === '1W' ? 2.4 : range === '1M' ? 4.2 : range === '3M' ? 8.8 : 26.5) * (i / totalPoints);
-    const wave = Math.sin((i / totalPoints) * Math.PI * 2) * (baseValue * 0.012);
-    const drift = (baseValue * 0.02) * (i / totalPoints);
-    const value = Math.max(1, baseValue + wave - drift + step);
-    const timestamp = new Date(now.getTime() - (totalPoints - i) * 3600000);
-    points.push({
-      label: timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      value: Number(value.toFixed(2)),
-    });
-  }
-  return points;
-}
-
 async function getChartSeries(symbol, range = '1M') {
-  try {
-    const quote = await getQuote(symbol);
-    return {
-      symbol: quote.symbol,
-      range,
-      points: buildChartSeries(quote.ltp || 100, range),
-    };
-  } catch (err) {
-    return {
-      symbol: String(symbol || '').toUpperCase(),
-      range,
-      points: buildChartSeries(100, range),
-      warning: err.message,
-    };
-  }
+  const normalized = String(symbol || '').toUpperCase();
+  const instrument = INSTRUMENT_TOKENS[normalized] || (await loadInstrumentMaster())[`${normalized}-EQ`];
+  if (!instrument) throw new Error(`Symbol "${normalized}" not found in instrument master`);
+  const intervals = { '1D': 'TEN_MINUTE', '1W': 'ONE_HOUR', '1M': 'ONE_DAY', '3M': 'ONE_DAY', '1Y': 'ONE_DAY' };
+  const days = { '1D': 1, '1W': 7, '1M': 31, '3M': 93, '1Y': 365 };
+  const end = new Date();
+  const start = new Date(end.getTime() - (days[range] || 31) * 86400000);
+  const format = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
+  const sessionData = await ensureSession();
+  const { data } = await axios.post(ROOT_URL + ROUTES.candles, {
+    exchange: instrument.exchange,
+    symboltoken: instrument.symboltoken || instrument.token,
+    interval: intervals[range] || 'ONE_DAY',
+    fromdate: format(start),
+    todate: format(end),
+  }, { headers: { ...baseHeaders(), Authorization: `Bearer ${sessionData.jwtToken}` }, timeout: 15000 });
+  if (!data || data.status !== true || !Array.isArray(data.data)) throw new Error((data && data.message) || 'Historical chart data unavailable');
+  return {
+    symbol: normalized,
+    range,
+    points: data.data.map(row => ({ label: row[0], open: Number(row[1]), high: Number(row[2]), low: Number(row[3]), value: Number(row[4]), volume: Number(row[5] || 0) })),
+  };
 }
 
 module.exports = {
@@ -288,6 +240,7 @@ module.exports = {
   getLtp,
   getIndexQuote,
   getStockQuote,
+  searchInstruments,
   getQuote,
   getMarketWatchlist,
   getGainersLosers,
