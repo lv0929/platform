@@ -2253,7 +2253,7 @@ let PUBLIC_DETAIL = null;
 function renderPublicStockDetail(){
   const symbol = STATE.stockSym || '—';
   const quote = PUBLIC_DETAIL && PUBLIC_DETAIL.symbol===symbol ? PUBLIC_DETAIL : {};
-  return `${pageHead('Stock Detail',quote.companyName||symbol,'Live quote from the LedgerView backend.')}
+  return `${pageHead('Stock Detail',quote.name||symbol,'Live quote from the LedgerView backend.')}
   <div class="public-market-grid">${publicQuoteCard(symbol,quote)}</div>
   <div class="public-lists" style="margin-top:18px;"><div class="public-list"><h3>Market Data</h3><div class="public-list-row"><span>Exchange</span><span>${quote.exchange||'—'}</span></div><div class="public-list-row"><span>Volume</span><span>${publicNumber(quote.volume)}</span></div><div class="public-list-row"><span>Day High</span><span>${publicNumber(quote.high)}</span></div><div class="public-list-row"><span>Day Low</span><span>${publicNumber(quote.low)}</span></div></div><div class="public-list"><h3>Additional Metrics</h3><div class="public-list-row"><span>52 Week High</span><span>${publicNumber(quote.week52High)}</span></div><div class="public-list-row"><span>52 Week Low</span><span>${publicNumber(quote.week52Low)}</span></div><div class="public-list-row"><span>Market Cap</span><span>${publicNumber(quote.marketCap)}</span></div></div></div>
   <div class="market-meta"><span>Last Updated: ${quote.updatedAt||'—'}</span><span>Source: Angel One SmartAPI</span></div>`;
@@ -3110,7 +3110,7 @@ function render(){
 async function fetchPublicQuote(symbol){
   if(!symbol || PUBLIC_DETAIL && PUBLIC_DETAIL.symbol===symbol && PUBLIC_DETAIL.updatedAt) return;
   try{
-    const response = await backendApi('/api/market/quote/'+encodeURIComponent(symbol));
+    const response = await backendApi('/api/market/stock/'+encodeURIComponent(symbol));
     if(!response.ok) throw new Error('Quote unavailable');
     PUBLIC_DETAIL = await response.json();
     PUBLIC_DETAIL.updatedAt = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -3426,7 +3426,7 @@ async function searchPublicStocks(query){
     if(!response.ok) throw new Error('Search unavailable');
     const data = await response.json();
     const items = Array.isArray(data.items) ? data.items : [];
-    results.innerHTML = items.map(item=>`<button onclick="navigate('stockdetail',{stockSym:'${item.symbol}'})"><span><strong>${item.symbol}</strong><br><small>${item.companyName||item.symbol} · ${item.exchange||'NSE'}</small></span><span>Open quote →</span></button>`).join('') || '<div style="padding:12px;color:var(--ink-dim);">No instruments found.</div>';
+    results.innerHTML = items.map(item=>`<button onclick="navigate('stockdetail',{stockSym:'${item.symbol}'})"><span><strong>${item.symbol}</strong><br><small>${item.name||item.symbol} · ${item.exchange||'NSE'}</small></span><span>Open quote →</span></button>`).join('') || '<div style="padding:12px;color:var(--ink-dim);">No instruments found.</div>';
     results.hidden=false;
   }catch(error){ results.hidden=false; results.innerHTML='<div style="padding:12px;color:var(--bear);">Search unavailable.</div>'; }
 }

@@ -80,6 +80,15 @@ router.get('/quote/:symbol', async (req, res) => {
   }
 });
 
+router.get('/stock/:symbol', async (req, res) => {
+  try {
+    const detail = await angelOne.getStockDetail(req.params.symbol);
+    res.json({ ...detail, source: 'Angel One SmartAPI' });
+  } catch (err) {
+    res.status(404).json({ error: err.message, source: 'Angel One SmartAPI' });
+  }
+});
+
 router.get('/chart/:symbol', async (req, res) => {
   try {
     const symbol = req.params.symbol.toUpperCase();

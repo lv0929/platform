@@ -35,6 +35,12 @@ app.use((err, req, res, next) => {
 async function startServer(port = process.env.PORT || 4000) {
   await connectDB();
 
+  try {
+    await angelOne.loadInstrumentMaster();
+  } catch (err) {
+    console.warn('[server] Angel One instrument master failed to load:', err.message);
+  }
+
   const hasAngelCreds = ['ANGEL_API_KEY', 'ANGEL_CLIENT_CODE', 'ANGEL_MPIN', 'ANGEL_TOTP_SECRET'].every((key) => !!process.env[key]);
   if (hasAngelCreds) {
     try {

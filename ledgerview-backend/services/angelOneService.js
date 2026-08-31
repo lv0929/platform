@@ -25,6 +25,7 @@ const INSTRUMENT_MASTER_URL = 'https://margincalculator.angelone.in/OpenAPI_File
 
 let session = null;
 let instrumentMasterCache = null;
+let instrumentMasterLoad = null;
 
 function requiredEnv(name, aliases = []) {
   const candidates = [name, ...aliases];
@@ -117,43 +118,60 @@ async function getIndexQuote(name) {
 
 async function loadInstrumentMaster() {
   if (instrumentMasterCache) return instrumentMasterCache;
-  const { data } = await axios.get(INSTRUMENT_MASTER_URL, { timeout: 30000 });
-  const map = {};
-  for (const row of data) {
-    if (row.exch_seg === 'NSE' && row.symbol && row.symbol.endsWith('-EQ')) {
-      map[row.symbol] = { token: row.token, exchange: 'NSE', tradingsymbol: row.symbol };
-    }
-  }
-  instrumentMasterCache = map;
-  return map;
+  if (instrumentMasterLoad) return instrumentMasterLoad;
+  instrumentMasterLoad = axios.get(INSTRUMENT_MASTER_URL, { timeout: 30000 })
+    .then(({ data }) => {
+      if (!Array.isArray(data)) throw new Error('Angel One instrument master returned an invalid payload');
+      const universe = [];
+      for (const row of data) {
+        if (!['NSE', 'BSE'].includes(row.exch_seg) || !row.symbol || !row.token) continue;
+        const tradingsymbol = String(row.symbol).toUpperCase();
+        const symbol = tradingsymbol.replace(/-EQ$/, '');
+        universe.push({
+          symbol,
+          name: row.name || row.companyname || symbol,
+          exchange: row.exch_seg,
+          token: String(row.token),
+          tradingsymbol,
+        });
+      }
+      instrumentMasterCache = universe;
+      console.log(`[market] Instrument universe loaded: ${universe.length} NSE/BSE symbols`);
+      return universe;
+    })
+    .catch((error) => {
+      instrumentMasterLoad = null;
+      throw error;
+    });
+  return instrumentMasterLoad;
+}
+
+function findInstrument(universe, symbol) {
+  const normalized = String(symbol || '').trim().toUpperCase();
+  const exact = universe.find((instrument) => instrument.symbol === normalized || instrument.tradingsymbol === normalized);
+  return exact || universe.find((instrument) => instrument.symbol === normalized.replace(/-EQ$/, ''));
 }
 
 async function searchInstruments(query, limit = 12) {
   const term = String(query || '').trim().toUpperCase();
   if (!term) return [];
-  const master = await loadInstrumentMaster();
-  return Object.values(master)
-    .filter((instrument) => instrument.tradingsymbol.includes(term))
+  const universe = await loadInstrumentMaster();
+  return universe
+    .filter((instrument) => instrument.symbol.includes(term) || instrument.name.toUpperCase().includes(term))
     .slice(0, Math.min(Number(limit) || 12, 25))
-    .map((instrument) => ({
-      symbol: instrument.tradingsymbol.replace(/-EQ$/, ''),
-      companyName: instrument.tradingsymbol.replace(/-EQ$/, ''),
-      exchange: instrument.exchange,
-      token: instrument.token,
-    }));
+    .map(({ symbol, name, exchange, token }) => ({ symbol, name, exchange, token }));
 }
 
 async function getStockQuote(sym) {
-  const master = await loadInstrumentMaster();
-  const key = `${sym}-EQ`;
-  const inst = master[key];
-  if (!inst) throw new Error(`Symbol "${sym}" not found in instrument master`);
+  const universe = await loadInstrumentMaster();
+  const inst = findInstrument(universe, sym);
+  if (!inst) throw new Error(`Symbol "${sym}" not found in NSE/BSE instrument master`);
   const data = await getLtp({
     exchange: inst.exchange,
     tradingsymbol: inst.tradingsymbol,
     symboltoken: inst.token,
   });
-  return { sym, ltp: data.ltp, previousClose: data.close || data.previousClose || data.ltp, raw: data };
+  return { sym: inst.symbol, name: inst.name, exchange: inst.exchange, token: inst.token, ltp: data.ltp, previousClose: data.close || data.previousClose || data.ltp, raw: data };
 }
 
 function toSafeNumber(value, fallback = 0) {
@@ -171,7 +189,10 @@ function normalizeQuote(symbol, raw) {
   const change = Number((ltp - previousClose).toFixed(2));
   const percentChange = previousClose ? Number(((change / previousClose) * 100).toFixed(2)) : 0;
   return {
+    name: raw?.name || raw?.companyName || null,
     symbol: String(symbol || raw?.tradingsymbol || raw?.symbol || '').toUpperCase(),
+    exchange: raw?.exchange || raw?.exch_seg || null,
+    token: raw?.token || raw?.symboltoken || null,
     ltp,
     change,
     percentChange,
@@ -185,7 +206,25 @@ function normalizeQuote(symbol, raw) {
 
 async function getQuote(symbol) {
   const quote = await getStockQuote(String(symbol).toUpperCase());
-  return normalizeQuote(symbol, quote.raw || quote);
+  return { ...normalizeQuote(symbol, quote.raw || quote), name: quote.name, exchange: quote.exchange, token: quote.token };
+}
+
+async function getStockDetail(symbol) {
+  const quote = await getQuote(symbol);
+  return {
+    name: quote.name,
+    symbol: quote.symbol,
+    exchange: quote.exchange,
+    ltp: quote.ltp,
+    change: quote.change,
+    volume: quote.volume,
+    open: quote.open,
+    high: quote.high,
+    low: quote.low,
+    '52wHigh': null,
+    '52wLow': null,
+    marketCap: null,
+  };
 }
 
 async function getMarketWatchlist(symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'LTIM', 'ITC']) {
@@ -211,7 +250,8 @@ async function getGainersLosers(symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK'
 
 async function getChartSeries(symbol, range = '1M') {
   const normalized = String(symbol || '').toUpperCase();
-  const instrument = INSTRUMENT_TOKENS[normalized] || (await loadInstrumentMaster())[`${normalized}-EQ`];
+  const universe = await loadInstrumentMaster();
+  const instrument = INSTRUMENT_TOKENS[normalized] || findInstrument(universe, normalized);
   if (!instrument) throw new Error(`Symbol "${normalized}" not found in instrument master`);
   const intervals = { '1D': 'TEN_MINUTE', '1W': 'ONE_HOUR', '1M': 'ONE_DAY', '3M': 'ONE_DAY', '1Y': 'ONE_DAY' };
   const days = { '1D': 1, '1W': 7, '1M': 31, '3M': 93, '1Y': 365 };
@@ -240,6 +280,7 @@ module.exports = {
   getLtp,
   getIndexQuote,
   getStockQuote,
+  getStockDetail,
   searchInstruments,
   getQuote,
   getMarketWatchlist,
