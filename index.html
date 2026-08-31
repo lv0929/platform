@@ -164,6 +164,8 @@ button{font-family:inherit;cursor:pointer;}
   color:var(--ink-faint);
   line-height:1.6;
 }
+.backend-status{display:flex;align-items:center;gap:6px;margin-top:8px;color:var(--ink-dim);}
+.backend-status .dot{width:6px;height:6px;flex:0 0 6px;}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column;}
 
@@ -802,6 +804,7 @@ button{font-family:inherit;cursor:pointer;}
     <div class="sidebar-foot">
       DATA → ANALYSIS →<br>RESEARCH → ACTION<br><br>
       SEBI Reg. — see Legal
+      <div class="backend-status" id="footerBackendStatus"><span class="dot"></span><span>Backend: checking</span></div>
     </div>
   </aside>
 
@@ -826,6 +829,7 @@ button{font-family:inherit;cursor:pointer;}
         <button class="icon-btn" title="More" onclick="openMore()">▥</button>
         <button class="icon-btn" title="Alerts & Notifications" onclick="toggleNotif()">🔔</button>
         <button class="icon-btn" title="LedgerView Intelligence" onclick="navigate('intelligence')">✦</button>
+        <button class="icon-btn" title="Settings" onclick="navigate('settings')">⚙</button>
       </div>
     </header>
 
@@ -1605,6 +1609,7 @@ function openChartModal(sym, range, basePriceStr){
     </div>`;
   document.getElementById('chartModal').classList.add('open');
   requestAnimationFrame(()=>drawCandleChart('modalChartWrap', base, 'modal:'+sym+':'+range));
+  fetchBackendChart(sym, range, base);
 }
 function openIndexChart(name, valStr){
   openChartModal(name, STATE.chartRange||'1M', valStr);
@@ -1661,6 +1666,20 @@ function calcRSI(candles, period){
 function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 const SERIES_CACHE = {};
+async function fetchBackendChart(sym, range, base){
+  try{
+    const resp = await backendApi(`/api/market/chart/${encodeURIComponent(sym)}?range=${encodeURIComponent(range)}`);
+    if(!resp.ok) return;
+    const data = await resp.json();
+    if(!Array.isArray(data.points) || !data.points.length) return;
+    SERIES_CACHE['modal:'+sym+':'+range] = data.points.map((point, index, points)=>{
+      const close = Number(point.value) || base;
+      const previous = index ? Number(points[index-1].value) || close : close;
+      return {o:previous,h:Math.max(previous,close),l:Math.min(previous,close),c:close,v:0};
+    });
+    if(document.getElementById('chartModal').classList.contains('open')) drawCandleChart('modalChartWrap', base, 'modal:'+sym+':'+range);
+  }catch(e){ /* chart remains usable from the cached local series */ }
+}
 function drawCandleChart(wrapId, basePrice, cacheKey){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
@@ -2646,7 +2665,8 @@ function renderProfile(){
   `;
 }
 function renderSettings(){
-  const url = BACKEND_URL || '';
+  const url = BACKEND_URL;
+  const status = BACKEND_STATUS === 'connected' ? 'Connected ✅' : BACKEND_STATUS === 'failed' ? 'Connection Failed ❌' : 'Not tested';
   return `
   ${pageHead('Settings','Settings','')}
   <div class="card">
@@ -2658,14 +2678,12 @@ function renderSettings(){
 
   ${secHead('','Backend Connection')}
   <div class="card">
-    <div class="stat-label" style="margin-bottom:8px;">LedgerView Backend URL</div>
+    <div class="stat-label" style="margin-bottom:8px;">Backend URL</div>
     <div class="ai-input-row">
-      <input id="backendUrlInput" placeholder="https://your-backend.example.com" value="${url}">
+      <input id="backendUrlInput" type="url" placeholder="https://your-backend.example.com" value="${url}">
       <button class="ai-generate-btn" onclick="saveBackendUrl()">Save</button>
     </div>
-    <div id="backendStatusNote" class="section-note">
-      ${url ? `Configured: ${url} — indices and watchlists will use your real MongoDB + Angel One backend when reachable, and fall back to the built-in simulation otherwise.` : 'Not configured. The app runs entirely on its built-in simulation + AI web-search fetch. Point this at your own deployed backend (see the ledgerview-backend README) to pull real Angel One quotes and store watchlists in your own MongoDB Atlas instead.'}
-    </div>
+    <div id="backendStatusNote" class="section-note">${status}</div>
     <button class="chip" onclick="testBackendConnection()">Test Connection</button>
   </div>
   `;
@@ -2996,13 +3014,16 @@ async function fetchRealLiveMarketData(){
   // Prefer your own real backend (MongoDB Atlas + Angel One SmartAPI) when
   // configured in Settings — genuine broker-sourced data, not AI web search.
   const gotRealBackendData = await fetchIndicesFromBackend();
-  if(gotRealBackendData){
+  const gotBackendCollections = await fetchMarketCollectionsFromBackend();
+  if(gotRealBackendData || gotBackendCollections){
     LIVE_FETCH_STATE.status = 'ok';
     LIVE_FETCH_STATE.source = 'angelone';
     LIVE_FETCH_STATE.lastUpdated = getIST();
+    updateBackendStatus('connected', 'Connected ✅');
     render();
     return;
   }
+  updateBackendStatus('failed', 'Connection Failed ❌');
   LIVE_FETCH_STATE.source = 'websearch';
 
   const stockBatch = STOCKS.filter(s=>s.cap==='Large Cap').slice(0,20).map(s=>s.sym);
@@ -3125,40 +3146,56 @@ setInterval(tickLiveData, 3000);
 // production-grade auth security. It's the closest honest approximation of
 // "login + saved data" achievable inside a static, serverless HTML file.
 let PROFILE = null; // {name, phone, key}
-let BACKEND_URL = null; // set via Settings; a plain URL string, never a secret
+const DEFAULT_BACKEND_URL = 'https://ledgerview-backend-tzxp.onrender.com';
+let BACKEND_URL = DEFAULT_BACKEND_URL;
+let BACKEND_STATUS = 'unknown';
+
+function updateBackendStatus(status, message){
+  BACKEND_STATUS = status;
+  const note = document.getElementById('backendStatusNote');
+  if(note) note.textContent = message || (status === 'connected' ? 'Connected ✅' : status === 'failed' ? 'Connection Failed ❌' : 'Not tested');
+  const footer = document.getElementById('footerBackendStatus');
+  if(footer){
+    footer.innerHTML = `<span class="dot ${status === 'connected' ? 'live' : ''}"></span><span>Backend: ${status === 'connected' ? 'connected' : status === 'failed' ? 'connection failed' : 'checking'}</span>`;
+  }
+}
+
+function backendApi(path, options){
+  return fetch(BACKEND_URL.replace(/\/$/, '') + path, options);
+}
 
 async function saveBackendUrl(){
-  const raw = document.getElementById('backendUrlInput').value.trim().replace(/\/$/,'');
-  BACKEND_URL = raw || null;
-  try{ await window.storage.set('backendUrl', BACKEND_URL || ''); }catch(e){ /* non-fatal */ }
-  testBackendConnection();
+  const input = document.getElementById('backendUrlInput');
+  const raw = input ? input.value.trim().replace(/\/$/,'') : DEFAULT_BACKEND_URL;
+  BACKEND_URL = raw || DEFAULT_BACKEND_URL;
+  localStorage.setItem('ledgerview-backend-url', BACKEND_URL);
+  updateBackendStatus('unknown', 'Checking connection…');
+  await testBackendConnection();
 }
 async function loadBackendUrl(){
-  try{
-    const res = await window.storage.get('backendUrl');
-    if(res && res.value) BACKEND_URL = res.value;
-  }catch(e){ /* none saved yet */ }
+  BACKEND_URL = localStorage.getItem('ledgerview-backend-url') || DEFAULT_BACKEND_URL;
+  localStorage.setItem('ledgerview-backend-url', BACKEND_URL);
+  updateBackendStatus('unknown');
 }
 async function testBackendConnection(){
-  const note = document.getElementById('backendStatusNote');
-  if(!BACKEND_URL){ if(note) note.textContent = 'No backend URL set.'; return; }
-  if(note) note.textContent = 'Checking connection…';
+  updateBackendStatus('unknown', 'Checking connection…');
   try{
-    const resp = await fetch(BACKEND_URL + '/api/health', {method:'GET'});
+    const resp = await backendApi('/api/health', {method:'GET'});
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
-    if(note) note.textContent = `✅ Connected — ${data.service || 'backend'} is reachable at ${BACKEND_URL}.`;
+    updateBackendStatus('connected', 'Connected ✅');
+    return data;
   }catch(err){
-    if(note) note.textContent = `⚠️ Could not reach ${BACKEND_URL} (${err.message}). Falling back to built-in simulation. Check the server is running and CORS_ORIGIN includes this page's origin.`;
+    updateBackendStatus('failed', 'Connection Failed ❌');
+    return null;
   }
 }
 
 // Real Angel One-backed index quotes, via YOUR backend — only attempted
 // when a backend URL is configured; silently falls back otherwise.
 async function fetchIndicesFromBackend(){
-  if(!BACKEND_URL) return false;
   try{
-    const resp = await fetch(BACKEND_URL + '/api/market/indices');
+    const resp = await backendApi('/api/market/indices');
     if(!resp.ok) return false;
     const data = await resp.json();
     let any = false;
@@ -3171,6 +3208,40 @@ async function fetchIndicesFromBackend(){
       }
     });
     return any;
+  }catch(e){ return false; }
+}
+async function fetchMarketCollectionsFromBackend(){
+  try{
+    const symbols = STOCKS.slice(0,20).map(s=>s.sym).join(',');
+    const responses = await Promise.all([
+      backendApi(`/api/market/stocks?symbols=${encodeURIComponent(symbols)}`),
+      backendApi('/api/market/gainers'),
+      backendApi('/api/market/losers'),
+      backendApi('/api/market/most-active'),
+    ]);
+    if(responses.some(resp=>!resp.ok)) return false;
+    const [stocksData, gainersData, losersData, activeData] = await Promise.all(responses.map(resp=>resp.json()));
+    const applyQuotes = (items, target) => (Array.isArray(items) ? items : []).forEach(item=>{
+      const row = target.find(entry=>entry.sym===item.symbol);
+      if(row){
+        row.price = Number(item.ltp || row.price).toLocaleString('en-IN',{maximumFractionDigits:2});
+        row.chg = `${Number(item.percentChange || 0) >= 0 ? '+' : ''}${Number(item.percentChange || 0).toFixed(2)}%`;
+        row.dir = Number(item.percentChange || 0) >= 0 ? 'up' : 'down';
+      }
+    });
+    applyQuotes(stocksData.items, STOCKS);
+    const updateMoverList = (items, target) => {
+      if(Array.isArray(items) && items.length) target.splice(0, target.length, ...items.map(item=>({
+        sym:item.symbol,
+        price:Number(item.ltp || 0).toLocaleString('en-IN',{maximumFractionDigits:2}),
+        chg:`${Number(item.percentChange || 0) >= 0 ? '+' : ''}${Number(item.percentChange || 0).toFixed(2)}%`,
+        dir:Number(item.percentChange || 0) >= 0 ? 'up' : 'down',
+      })));
+    };
+    updateMoverList(gainersData.items, GAINERS);
+    updateMoverList(losersData.items, LOSERS);
+    updateMoverList(activeData.items, MOST_ACTIVE);
+    return true;
   }catch(e){ return false; }
 }
 let DEFAULT_WATCHLISTS = null;
@@ -3313,7 +3384,7 @@ function removeFromWatchlist(listName, sym){
 }
 
 populateCountrySelect();
-loadBackendUrl();
+loadBackendUrl().then(()=>testBackendConnection());
 
 </script>
 </body>
