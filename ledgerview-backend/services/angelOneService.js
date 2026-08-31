@@ -64,6 +64,22 @@ function chartCacheKey(symbol, range) {
   return `${symbol}_${range}`;
 }
 
+function normalizeChartPoint(timestamp, open, high, low, close, volume) {
+  const values = [open, high, low, close].map(Number);
+  if (!values.every(Number.isFinite)) return null;
+  const timestampValue = String(timestamp || new Date().toISOString());
+  return {
+    timestamp: timestampValue,
+    label: timestampValue,
+    open: values[0],
+    high: values[1],
+    low: values[2],
+    close: values[3],
+    value: values[3],
+    volume: Number(volume) || 0,
+  };
+}
+
 function enqueueChartProviderRequest(task) {
   return new Promise((resolve, reject) => {
     chartQueue.push({ task, resolve, reject });
@@ -582,14 +598,7 @@ async function fetchChartSeriesUncached(symbol, range = '1M') {
       exchange: instrument.exchange,
       range,
       interval,
-      points: data.data.map((row) => ({
-        label: row[0],
-        open: Number(row[1]),
-        high: Number(row[2]),
-        low: Number(row[3]),
-        value: Number(row[4]),
-        volume: Number(row[5] || 0),
-      })),
+      points: data.data.map((row) => normalizeChartPoint(row[0], row[1], row[2], row[3], row[4], row[5])).filter(Boolean),
     };
   } catch (error) {
     if (error.response?.status === 429 || /429/.test(String(error.message))) {
@@ -599,28 +608,51 @@ async function fetchChartSeriesUncached(symbol, range = '1M') {
     if (!ticker) throw error;
     console.warn(`[chart] Fallback Activated for ${normalized}_${range}`);
 
-    const yahooInterval = { '1D': '5m', '1W': '1h', '1M': '1d', '3M': '1d', '1Y': '1d' }[String(range).trim().toUpperCase()] || '1d';
+    const normalizedRange = String(range).trim().toUpperCase();
+    const yahooInterval = { '1D': '5m', '1W': '1h', '1M': '1d', '3M': '1d', '1Y': '1d' }[normalizedRange] || '1d';
+    const yahooRange = { '1D': '1d', '1W': '5d', '1M': '1mo', '3M': '3mo', '1Y': '1y' }[normalizedRange] || '1mo';
     const period1 = Math.floor(start.getTime() / 1000);
     const period2 = Math.floor(end.getTime() / 1000);
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=${yahooInterval}&events=history`;
-    const { data } = await axios.get(yahooUrl, { timeout: 15000 });
-    const result = data?.chart?.result?.[0];
-    const quote = result?.indicators?.quote?.[0];
-    if (!result || !quote || !Array.isArray(result.timestamp)) {
-      throw new Error('Historical chart data unavailable from primary and secondary providers');
+    const yahooUrls = [
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=${yahooInterval}&events=history`,
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${yahooRange}&interval=${yahooInterval}&events=history`,
+    ];
+    let fallbackError = null;
+    for (const yahooUrl of yahooUrls) {
+      try {
+        const { data } = await axios.get(yahooUrl, { timeout: 15000 });
+        const result = data?.chart?.result?.[0];
+        const quote = result?.indicators?.quote?.[0];
+        const points = result?.timestamp?.map((timestamp, index) => normalizeChartPoint(
+          new Date(timestamp * 1000).toISOString().slice(0, 19).replace('T', ' '),
+          quote?.open?.[index], quote?.high?.[index], quote?.low?.[index], quote?.close?.[index], quote?.volume?.[index]
+        )).filter(Boolean) || [];
+        if (points.length) {
+          console.info(`[chart] Fallback chart success ${normalized}_${range} points=${points.length}`);
+          return { symbol: normalized, exchange: instrument.exchange, range, interval, points };
+        }
+
+        const meta = result?.meta || {};
+        const metaPoint = normalizeChartPoint(
+          new Date((meta.regularMarketTime || Date.now() / 1000) * 1000).toISOString().slice(0, 19).replace('T', ' '),
+          meta.regularMarketOpen || meta.previousClose || meta.regularMarketPrice,
+          meta.regularMarketDayHigh || meta.regularMarketPrice,
+          meta.regularMarketDayLow || meta.regularMarketPrice,
+          meta.regularMarketPrice || meta.chartPreviousClose,
+          meta.regularMarketVolume
+        );
+        if (metaPoint) {
+          console.info(`[chart] Fallback chart success ${normalized}_${range} points=1`);
+          return { symbol: normalized, exchange: instrument.exchange, range, interval, points: [metaPoint] };
+        }
+        fallbackError = new Error('Fallback provider returned no usable candle data');
+      } catch (secondaryError) {
+        fallbackError = secondaryError;
+      }
     }
 
-    const points = result.timestamp.map((timestamp, index) => ({
-      label: new Date(timestamp * 1000).toISOString().slice(0, 19).replace('T', ' '),
-      open: Number(quote.open?.[index]),
-      high: Number(quote.high?.[index]),
-      low: Number(quote.low?.[index]),
-      value: Number(quote.close?.[index]),
-      volume: Number(quote.volume?.[index] || 0),
-    })).filter((point) => [point.open, point.high, point.low, point.value].every(Number.isFinite));
-
-    if (!points.length) throw new Error('Historical chart data unavailable from primary and secondary providers');
-    return { symbol: normalized, exchange: instrument.exchange, range, interval, points };
+    console.error(`[chart] Fallback chart failed ${normalized}_${range}: ${fallbackError?.message || 'no usable candle data'}`);
+    throw new Error('Historical chart data unavailable from primary and fallback providers');
   }
 }
 
