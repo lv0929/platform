@@ -114,3 +114,26 @@ test('real quote volume is preserved and stock detail exposes live metrics and C
   assert.ok(Object.prototype.hasOwnProperty.call(detail, 'marketCap'));
   assert.ok(Object.prototype.hasOwnProperty.call(detail, 'casScore'));
 });
+
+test('GET /api/market/chart returns populated candles with the required fields for supported symbols', async () => {
+  const server = app.listen(0);
+  const port = server.address().port;
+  const symbols = ['NIFTY', 'BANKNIFTY', 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'TCS'];
+
+  try {
+    for (const symbol of symbols) {
+      const res = await fetch(`http://127.0.0.1:${port}/api/market/chart/${symbol}?range=1M`);
+      const data = await res.json();
+      assert.equal(res.status, 200, `${symbol} returned status ${res.status}`);
+      assert.ok(Array.isArray(data.points), `${symbol} points must be an array`);
+      assert.ok(data.points.length > 0, `${symbol} points.length must be > 0`);
+
+      const firstPoint = data.points[0];
+      for (const field of ['timestamp', 'open', 'high', 'low', 'close', 'volume']) {
+        assert.ok(Object.prototype.hasOwnProperty.call(firstPoint, field), `${symbol} missing ${field}`);
+      }
+    }
+  } finally {
+    server.close();
+  }
+});

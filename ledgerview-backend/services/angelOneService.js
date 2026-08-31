@@ -601,6 +601,8 @@ async function fetchChartSeriesUncached(symbol, range = '1M') {
       points: data.data.map((row) => normalizeChartPoint(row[0], row[1], row[2], row[3], row[4], row[5])).filter(Boolean),
     };
   } catch (error) {
+    const primaryFailure = error?.response?.data || error?.message || String(error || 'Unknown provider failure');
+    console.warn(`[chart] Primary provider failed for ${normalized}_${range}: ${primaryFailure}`);
     if (error.response?.status === 429 || /429/.test(String(error.message))) {
       console.warn(`[chart] Angel One 429 for ${normalized}_${range}`);
     }
@@ -647,6 +649,8 @@ async function fetchChartSeriesUncached(symbol, range = '1M') {
         }
         fallbackError = new Error('Fallback provider returned no usable candle data');
       } catch (secondaryError) {
+        const yahooFailure = secondaryError?.response?.data || secondaryError?.message || String(secondaryError || 'Unknown Yahoo failure');
+        console.warn(`[chart] Yahoo fallback request failed for ${normalized}_${range} at ${yahooUrl}: ${yahooFailure}`);
         fallbackError = secondaryError;
       }
     }
