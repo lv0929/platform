@@ -14,11 +14,16 @@ const ROUTES = {
   logout: '/rest/secure/angelbroking/user/v1/logout',
 };
 
+const INDEX_CONFIG = {
+  'NIFTY 50': { exchange: 'NSE', tradingsymbol: 'NIFTY', symboltoken: '26000', aliases: ['NIFTY50', 'NIFTY'] },
+  'BANK NIFTY': { exchange: 'NSE', tradingsymbol: 'BANKNIFTY', symboltoken: '26009', aliases: ['BANKNIFTY'] },
+  'India VIX': { exchange: 'NSE', tradingsymbol: 'INDIAVIX', symboltoken: '26017', aliases: ['INDIAVIX', 'INDIA VIX', 'VIX'] },
+  SENSEX: { exchange: 'BSE', tradingsymbol: 'SENSEX', symboltoken: '500010', aliases: ['BSESENSEX'] },
+  'GIFT NIFTY': { exchange: 'NFO', tradingsymbol: 'GIFTNIFTY', symboltoken: '26075', aliases: ['GIFTNIFTY'] },
+};
+
 const INSTRUMENT_TOKENS = {
-  'NIFTY 50': { exchange: 'NSE', tradingsymbol: 'NIFTY', symboltoken: '26000' },
-  'BANK NIFTY': { exchange: 'NSE', tradingsymbol: 'BANKNIFTY', symboltoken: '26009' },
-  'India VIX': { exchange: 'NSE', tradingsymbol: 'INDIAVIX', symboltoken: '26017' },
-  SENSEX: { exchange: 'BSE', tradingsymbol: 'SENSEX', symboltoken: '500010' },
+  ...INDEX_CONFIG,
   NIFTY: { exchange: 'NSE', tradingsymbol: 'NIFTY', symboltoken: '26000' },
   BANKNIFTY: { exchange: 'NSE', tradingsymbol: 'BANKNIFTY', symboltoken: '26009' },
   RELIANCE: { exchange: 'NSE', tradingsymbol: 'RELIANCE-EQ', symboltoken: '2885' },
@@ -27,30 +32,125 @@ const INSTRUMENT_TOKENS = {
   TCS: { exchange: 'NSE', tradingsymbol: 'TCS-EQ', symboltoken: '11536' },
 };
 
+function normalizeIndexName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return null;
+
+  const compact = raw.toUpperCase().replace(/[\s\-_]+/g, '');
+  for (const [label, config] of Object.entries(INDEX_CONFIG)) {
+    const labelKey = label.toUpperCase().replace(/[\s\-_]+/g, '');
+    if (labelKey === compact) return label;
+    if ((config.aliases || []).some((alias) => alias.toUpperCase().replace(/[\s\-_]+/g, '') === compact)) return label;
+  }
+
+  return raw;
+}
+
+function resolveIndexConfig(name) {
+  const label = normalizeIndexName(name);
+  const resolved = label ? INDEX_CONFIG[label] : null;
+  if (resolved) {
+    return { name: label, ...resolved };
+  }
+
+  const fallback = Object.entries(INDEX_CONFIG).find(([_, config]) => {
+    const aliases = [...(config.aliases || []), _];
+    return aliases.some((alias) => String(alias).toUpperCase().replace(/[\s\-_]+/g, '') === String(name || '').toUpperCase().replace(/[\s\-_]+/g, ''));
+  });
+
+  return fallback ? { name: fallback[0], ...fallback[1] } : null;
+}
+
+function getSecondaryIndexTicker(name) {
+  const label = normalizeIndexName(name);
+  const map = {
+    SENSEX: '^BSESN',
+    'India VIX': '^VIX',
+    'INDIA VIX': '^VIX',
+  };
+  return map[label] || map[String(name || '').trim()] || null;
+}
+
+async function fetchSecondaryIndexQuote(name) {
+  const ticker = getSecondaryIndexTicker(name);
+  if (!ticker) return null;
+
+  try {
+    const { data } = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1m`, { timeout: 10000 });
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+
+    const meta = result.meta || {};
+    const quote = result.indicators?.quote?.[0] || {};
+    const closes = Array.isArray(quote.close) ? quote.close.filter((value) => Number.isFinite(Number(value))) : [];
+    const opens = Array.isArray(quote.open) ? quote.open.filter((value) => Number.isFinite(Number(value))) : [];
+    const highs = Array.isArray(quote.high) ? quote.high.filter((value) => Number.isFinite(Number(value))) : [];
+    const lows = Array.isArray(quote.low) ? quote.low.filter((value) => Number.isFinite(Number(value))) : [];
+    const volumes = Array.isArray(quote.volume) ? quote.volume.filter((value) => Number.isFinite(Number(value))) : [];
+    const ltp = Number(meta.regularMarketPrice ?? closes[closes.length - 1] ?? 0);
+    const previousClose = Number(meta.previousClose ?? closes[closes.length - 2] ?? ltp);
+    const open = Number(meta.regularMarketOpen ?? opens[opens.length - 1] ?? ltp);
+    const high = Number(meta.regularMarketDayHigh ?? (highs.length ? Math.max(...highs) : ltp));
+    const low = Number(meta.regularMarketDayLow ?? (lows.length ? Math.min(...lows) : ltp));
+    const volume = Number(meta.regularMarketVolume ?? (volumes.length ? volumes[volumes.length - 1] : 0));
+
+    return {
+      name: normalizeIndexName(name) || String(name).trim(),
+      symbol: normalizeIndexName(name) || String(name).trim(),
+      exchange: 'NSE',
+      token: null,
+      ltp,
+      open,
+      high,
+      low,
+      previousClose,
+      volume,
+      raw: { source: 'secondary-market-adapter', ticker, meta, quote },
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
 function normalizeChartSymbol(symbol) {
   const raw = String(symbol || '').trim();
   if (!raw) return null;
-  const key = raw.toUpperCase().replace(/-EQ$/, '').replace(/\s+/g, ' ').trim();
-  const alias = INSTRUMENT_TOKENS[key];
-  if (alias) {
+
+  const normalizeLookupKey = (value) => String(value || '')
+    .toUpperCase()
+    .replace(/-EQ$/, '')
+    .replace(/[\s\-_]+/g, ' ')
+    .trim();
+
+  const key = normalizeLookupKey(raw);
+  const direct = INSTRUMENT_TOKENS[key];
+  if (direct) {
     return {
       symbol: key,
-      exchange: alias.exchange,
-      tradingsymbol: alias.tradingsymbol,
-      symboltoken: String(alias.symboltoken),
-      token: String(alias.symboltoken),
+      exchange: direct.exchange,
+      tradingsymbol: direct.tradingsymbol,
+      symboltoken: String(direct.symboltoken),
+      token: String(direct.symboltoken),
     };
   }
 
-  const normalizedKey = key === 'BANK NIFTY' ? 'BANKNIFTY' : key;
-  const fallback = INSTRUMENT_TOKENS[normalizedKey];
-  if (fallback) {
+  const matched = Object.entries(INSTRUMENT_TOKENS).find(([candidate, config]) => {
+    const candidateKey = normalizeLookupKey(candidate);
+    const tradingKey = normalizeLookupKey(config.tradingsymbol || '');
+    const aliasMatches = Array.isArray(config.aliases)
+      ? config.aliases.some((alias) => normalizeLookupKey(alias) === key)
+      : false;
+    return candidateKey === key || tradingKey === key || aliasMatches;
+  });
+
+  if (matched) {
+    const [symbolName, config] = matched;
     return {
-      symbol: normalizedKey,
-      exchange: fallback.exchange,
-      tradingsymbol: fallback.tradingsymbol,
-      symboltoken: String(fallback.symboltoken),
-      token: String(fallback.symboltoken),
+      symbol: symbolName,
+      exchange: config.exchange,
+      tradingsymbol: config.tradingsymbol,
+      symboltoken: String(config.symboltoken),
+      token: String(config.symboltoken),
     };
   }
 
@@ -158,10 +258,36 @@ async function getLtp({ exchange, tradingsymbol, symboltoken }) {
 }
 
 async function getIndexQuote(name) {
-  const inst = INSTRUMENT_TOKENS[name];
+  const inst = resolveIndexConfig(name);
   if (!inst) throw new Error(`No instrument token configured for "${name}"`);
-  const data = await getLtp(inst);
-  return { name, ltp: data.ltp, previousClose: data.close || data.previousClose || data.ltp, raw: data };
+
+  try {
+    const data = await getLtp({ exchange: inst.exchange, tradingsymbol: inst.tradingsymbol, symboltoken: inst.symboltoken });
+    const previousClose = Number(data.close ?? data.previousClose ?? data.prevClose ?? data.ltp ?? 0);
+    const open = Number(data.open ?? data.ltp ?? previousClose);
+    const high = Number(data.high ?? data.ltp ?? previousClose);
+    const low = Number(data.low ?? data.ltp ?? previousClose);
+    const volume = Number(data.volume ?? data.totalTradedVolume ?? 0);
+    return {
+      name: inst.name,
+      symbol: inst.name,
+      exchange: inst.exchange,
+      token: String(inst.symboltoken),
+      ltp: Number(data.ltp ?? 0),
+      open,
+      high,
+      low,
+      previousClose,
+      volume,
+      change: Number(((Number(data.ltp ?? 0) - previousClose)).toFixed(2)),
+      percentChange: previousClose ? Number((((Number(data.ltp ?? 0) - previousClose) / previousClose) * 100).toFixed(2)) : 0,
+      raw: data,
+    };
+  } catch (error) {
+    const fallback = await fetchSecondaryIndexQuote(name);
+    if (fallback) return fallback;
+    throw error;
+  }
 }
 
 async function loadInstrumentMaster() {

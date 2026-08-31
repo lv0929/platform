@@ -7,17 +7,27 @@ const DEFAULT_WATCHLIST = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', '
 const FALLBACK_SYMBOLS = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'LTIM', 'ITC', 'SUNPHARMA', 'BHARTIARTL', 'AXISBANK', 'KOTAKBANK'];
 
 function normalizeIndexPayload(name, quote) {
-  const safe = quote && quote.ltp !== undefined ? quote : { name, ltp: 0, previousClose: 0 };
-  const change = Number((safe.ltp - (safe.previousClose || safe.ltp || 0)).toFixed(2));
-  const percentChange = safe.previousClose ? Number(((change / safe.previousClose) * 100).toFixed(2)) : 0;
+  const safe = quote && (quote.ltp !== undefined || quote.previousClose !== undefined || quote.close !== undefined) ? quote : { name, ltp: 0, previousClose: 0 };
+  const ltp = Number(safe.ltp ?? safe.lastPrice ?? safe.close ?? safe.price ?? 0);
+  const previousClose = Number(safe.previousClose ?? safe.close ?? safe.prevClose ?? safe.previous_close ?? ltp);
+  const open = Number(safe.open ?? safe.openPrice ?? ltp);
+  const high = Number(safe.high ?? ltp);
+  const low = Number(safe.low ?? ltp);
+  const volume = Number(safe.volume ?? safe.totalTradedVolume ?? 0);
+  const change = Number((ltp - previousClose).toFixed(2));
+  const percentChange = previousClose ? Number(((change / previousClose) * 100).toFixed(2)) : 0;
   return {
     name,
     symbol: name,
-    ltp: Number(safe.ltp || 0),
-    previousClose: Number(safe.previousClose || 0),
+    ltp,
+    open,
+    high,
+    low,
+    previousClose,
     change,
     percentChange,
-    source: 'Angel One SmartAPI',
+    volume,
+    source: safe.source || 'Angel One SmartAPI',
   };
 }
 
@@ -49,6 +59,7 @@ function buildFallbackTerminalPayload() {
       { name: 'BANK NIFTY', symbol: 'BANK NIFTY', ltp: 52642.5, previousClose: 52390.4, change: 252.1, percentChange: 0.48 },
       { name: 'SENSEX', symbol: 'SENSEX', ltp: 80842.7, previousClose: 80510.9, change: 331.8, percentChange: 0.41 },
       { name: 'India VIX', symbol: 'India VIX', ltp: 13.24, previousClose: 14.08, change: -0.84, percentChange: -5.97 },
+      { name: 'GIFT NIFTY', symbol: 'GIFT NIFTY', ltp: 23820.1, previousClose: 23785.2, change: 34.9, percentChange: 0.15 },
     ],
     timestamp: new Date().toISOString(),
   };
@@ -162,7 +173,7 @@ function buildFallbackTerminalPayload() {
 }
 
 async function fetchSnapshotData() {
-  const names = ['NIFTY 50', 'BANK NIFTY', 'SENSEX', 'India VIX'];
+  const names = ['NIFTY 50', 'BANK NIFTY', 'SENSEX', 'India VIX', 'GIFT NIFTY'];
   const results = await Promise.allSettled(names.map((name) => angelOne.getIndexQuote(name)));
   const indices = results.map((result, index) => {
     const name = names[index];
@@ -251,7 +262,7 @@ async function fetchSnapshotData() {
 
 router.get('/indices', async (req, res) => {
   try {
-    const names = ['NIFTY 50', 'BANK NIFTY', 'SENSEX', 'India VIX'];
+    const names = ['NIFTY 50', 'BANK NIFTY', 'SENSEX', 'India VIX', 'GIFT NIFTY'];
     const results = await Promise.allSettled(names.map((n) => angelOne.getIndexQuote(n)));
     const out = {};
     results.forEach((r, i) => {

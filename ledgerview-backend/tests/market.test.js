@@ -60,6 +60,10 @@ test('chart symbol aliases and interval mapping are resolved for live Angel One 
   assert.equal(normalizeChartSymbol('NIFTY').token, '26000');
   assert.equal(normalizeChartSymbol('BANKNIFTY').exchange, 'NSE');
   assert.equal(normalizeChartSymbol('BANKNIFTY').token, '26009');
+  assert.equal(normalizeChartSymbol('INDIA VIX')?.token, '26017');
+  assert.equal(normalizeChartSymbol('SENSEX')?.token, '500010');
+  assert.equal(normalizeChartSymbol('GIFTNIFTY')?.symbol, 'GIFT NIFTY');
+  assert.equal(normalizeChartSymbol('GIFTNIFTY')?.token, '26075');
   assert.equal(normalizeChartSymbol('RELIANCE').token, '2885');
   assert.equal(normalizeChartSymbol('HDFCBANK').token, '1335');
   assert.equal(normalizeChartSymbol('ICICIBANK').token, '4963');
