@@ -201,6 +201,7 @@ function normalizeQuote(symbol, raw) {
     low,
     volume,
     previousClose,
+    raw,
   };
 }
 

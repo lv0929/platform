@@ -194,6 +194,11 @@ button{font-family:inherit;cursor:pointer;}
 .public-feature-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
 .public-feature{padding:16px 0;border-top:2px solid var(--brass);}.public-feature h3{font-size:14px;color:var(--paper);margin-bottom:7px;}.public-feature p{font-size:12px;color:var(--ink-dim);line-height:1.5;}
 .public-footer{padding:34px 0;border-top:1px solid var(--rule-hair);color:var(--ink-faint);font-size:12px;line-height:1.7;}
+.chart-live-meta{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule-hair);font:11px var(--font-mono);color:var(--ink-dim);}
+.chart-live-meta strong{display:block;color:var(--paper);font-size:14px;margin-top:4px;}
+.chart-canvas-wrap.tick-flash{animation:chartTick .35s ease-out;}
+@keyframes chartTick{0%{filter:brightness(1.35);}100%{filter:brightness(1);}}
+@media(max-width:700px){.chart-live-meta{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:850px){.public-market-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.public-lists{grid-template-columns:1fr;}.public-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:520px){.public-hero{padding:48px 0 32px;}.public-hero h1{font-size:43px;}.public-hero p{font-size:15px;}.public-market-grid,.public-feature-grid{grid-template-columns:1fr;}}
 .public-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 28px;border-bottom:1px solid var(--rule-hair);background:var(--bg-elev);}
@@ -1656,6 +1661,7 @@ function openChartModal(sym, range, basePriceStr){
   document.getElementById('chartModalTabs').innerHTML = STOCK_DETAIL.ranges.map(r=>`
     <div class="tab-btn ${r===range?'active':''}" onclick="event.stopPropagation();openChartModal('${sym}','${r}',${base})">${r}</div>`).join('');
   document.getElementById('chartModalBody').innerHTML = `
+    <div class="chart-live-meta"><div>Current Price<strong id="chartCurrentPrice">—</strong></div><div>Previous Close<strong id="chartPreviousClose">—</strong></div><div>Today's Change<strong id="chartTodayChange">—</strong></div><div>OHLC<strong id="chartOHLC">—</strong></div><div>Last Trade Time<strong id="chartLastTradeTime">—</strong></div></div>
     <div class="chart-canvas-wrap" id="modalChartWrap">
       <canvas class="chart-price-canvas"></canvas>
       <canvas class="chart-vol-canvas"></canvas>
@@ -1670,6 +1676,7 @@ function openChartModal(sym, range, basePriceStr){
   document.getElementById('chartModal').classList.add('open');
   requestAnimationFrame(()=>drawCandleChart('modalChartWrap', base, 'modal:'+sym+':'+range));
   fetchBackendChart(sym, range, base, 'modal:'+sym+':'+range, 'modalChartWrap');
+  subscribeChartStream(sym);
 }
 function openIndexChart(name, valStr){
   openChartModal(name, STATE.chartRange||'1M', valStr);
@@ -1706,6 +1713,54 @@ function calcRSI(candles, period){
 function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 const SERIES_CACHE = {};
+const LIVE_QUOTES = {};
+let chartSocket = null;
+let chartSocketSymbols = new Set();
+function subscribeChartStream(symbol){
+  chartSocketSymbols.add(String(symbol||'').toUpperCase());
+  if(!BACKEND_URL || !window.WebSocket) return;
+  if(chartSocket && chartSocket.readyState===WebSocket.OPEN){ chartSocket.send(JSON.stringify({type:'subscribe',symbols:[...chartSocketSymbols]})); return; }
+  if(chartSocket && chartSocket.readyState===WebSocket.CONNECTING) return;
+  const socketUrl = BACKEND_URL.replace(/^http/,'ws') + '/ws/market';
+  chartSocket = new WebSocket(socketUrl);
+  chartSocket.onopen = ()=>chartSocket.send(JSON.stringify({type:'subscribe',symbols:[...chartSocketSymbols]}));
+  chartSocket.onmessage = event=>{
+    try{ const tick=JSON.parse(event.data); if(tick.type==='quote') applyLiveTick(tick); }catch(error){ /* ignore malformed feed messages */ }
+  };
+  chartSocket.onclose = ()=>{ chartSocket=null; };
+}
+function applyLiveTick(tick){
+  const symbol = String(tick.symbol||'').toUpperCase();
+  LIVE_QUOTES[symbol] = tick;
+  const currentPrice=document.getElementById('chartCurrentPrice');
+  const previousClose=document.getElementById('chartPreviousClose');
+  const todayChange=document.getElementById('chartTodayChange');
+  const lastTrade=document.getElementById('chartLastTradeTime');
+  const ohlc=document.getElementById('chartOHLC');
+  if(currentPrice) currentPrice.textContent=publicNumber(tick.ltp);
+  if(previousClose) previousClose.textContent=publicNumber(tick.previousClose);
+  if(todayChange) todayChange.textContent=`${publicNumber(tick.change)} · ${publicChange(tick.percentChange)}`;
+  if(lastTrade) lastTrade.textContent=new Date(tick.timestamp).toLocaleTimeString();
+  if(ohlc) ohlc.textContent=`${publicNumber(tick.open)} / ${publicNumber(tick.high)} / ${publicNumber(tick.low)}`;
+  const now = Date.now();
+  Object.keys(SERIES_CACHE).filter(key=>key.includes(symbol)).forEach(key=>{
+    const candles = SERIES_CACHE[key];
+    if(!candles || !candles.length) return;
+    const latest = candles[candles.length-1];
+    const close = Number(tick.ltp);
+    if(!Number.isFinite(close)) return;
+    const sameMinute = latest.timestamp && now - latest.timestamp < 60000;
+    if(sameMinute){ latest.c=close; latest.h=Math.max(latest.h,close); latest.l=Math.min(latest.l,close); latest.v=Number(tick.volume)||latest.v; }
+    else candles.push({o:close,h:close,l:close,c:close,v:Number(tick.volume)||0,timestamp:now});
+    const wrapId = key.startsWith('modal:') ? 'modalChartWrap' : key.startsWith('public:') ? 'publicChartWrap'+['NIFTY 50','BANK NIFTY','RELIANCE','HDFCBANK'].indexOf(symbol) : null;
+    if(wrapId){
+      const wrap=document.getElementById(wrapId);
+      if(wrap){ wrap.classList.remove('tick-flash'); void wrap.offsetWidth; wrap.classList.add('tick-flash'); }
+      drawCandleChart(wrapId,close,key);
+    }
+  });
+  document.querySelectorAll('[data-live-symbol="'+symbol+'"]') .forEach(node=>node.textContent=publicNumber(tick.ltp));
+}
 async function fetchBackendChart(sym, range, base, cacheKey, wrapId){
   try{
     const resp = await backendApi(`/api/market/chart/${encodeURIComponent(sym)}?range=${encodeURIComponent(range)}`);
@@ -1716,7 +1771,7 @@ async function fetchBackendChart(sym, range, base, cacheKey, wrapId){
     SERIES_CACHE[seriesKey] = data.points.map((point, index, points)=>{
       const close = Number(point.value) || base;
       const previous = index ? Number(points[index-1].value) || close : close;
-      return {o:previous,h:Math.max(previous,close),l:Math.min(previous,close),c:close,v:0};
+      return {o:Number(point.open)||previous,h:Number(point.high)||Math.max(previous,close),l:Number(point.low)||Math.min(previous,close),c:close,v:Number(point.volume)||0,timestamp:Date.parse(point.label)||Date.now()};
     });
     localStorage.setItem('ledgerview-chart-'+seriesKey, JSON.stringify(SERIES_CACHE[seriesKey]));
     if(wrapId) drawCandleChart(wrapId, base, seriesKey);
@@ -1740,10 +1795,14 @@ function drawCandleChart(wrapId, basePrice, cacheKey){
   const rsiCv = wrap.querySelector('.chart-rsi-canvas');
   if(!priceCv) return;
 
-  const n = candles.length;
   const key = cacheKey || ('anon:'+basePrice);
-  const candles = SERIES_CACHE[key];
+  let candles = SERIES_CACHE[key];
+  if(!candles){
+    const cached = localStorage.getItem('ledgerview-chart-'+key);
+    if(cached){ try{ candles=SERIES_CACHE[key]=JSON.parse(cached); }catch(error){ candles=null; } }
+  }
   if(!candles) return;
+  const n = candles.length;
   const sma20 = calcSMA(candles, 20);
   const rsi14 = calcRSI(candles, 14);
 
@@ -1795,6 +1854,12 @@ function drawCandleChart(wrapId, basePrice, cacheKey){
   pctx.fillStyle = faint; pctx.font = '10px IBM Plex Mono, monospace';
   pctx.fillText(yMax.toFixed(2), 4, 11);
   pctx.fillText(yMin.toFixed(2), 4, H-4);
+  const quote = LIVE_QUOTES[(key.split(':')[1]||'').toUpperCase()];
+  const previousClose = quote && Number(quote.previousClose);
+  if(Number.isFinite(previousClose)){
+    pctx.strokeStyle = faint; pctx.setLineDash([4,4]); pctx.beginPath(); pctx.moveTo(0,y(previousClose)); pctx.lineTo(W,y(previousClose)); pctx.stroke(); pctx.setLineDash([]);
+    pctx.fillText('Prev close '+previousClose.toFixed(2), W-112, Math.max(12,y(previousClose)-4));
+  }
 
   // --- volume panel ---
   if(volCv){
@@ -3104,7 +3169,18 @@ function render(){
     requestAnimationFrame(()=>drawCandleChart('inlineChartWrap', base, 'inline:'+sym+':'+range));
   }
   if(STATE.route === 'home' && PROFILE) requestAnimationFrame(drawHomeCharts);
+  if(STATE.route === 'home' && !PROFILE) requestAnimationFrame(drawPublicCharts);
   if(STATE.route === 'stockdetail' && !PROFILE) fetchPublicQuote(STATE.stockSym);
+}
+
+function drawPublicCharts(){
+  ['NIFTY 50','BANK NIFTY','RELIANCE','HDFCBANK'].forEach((symbol,index)=>{
+    const wrapId='publicChartWrap'+index;
+    const quote=PUBLIC_MARKET.indices[symbol] || PUBLIC_MARKET.stocks.find(item=>item.symbol===symbol);
+    const base=Number(quote && quote.ltp)||100;
+    subscribeChartStream(symbol);
+    drawCandleChart(wrapId,base,'public:'+symbol);
+  });
 }
 
 async function fetchPublicQuote(symbol){

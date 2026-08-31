@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { connectDB } = require('./config/db');
 const angelOne = require('./services/angelOneService');
+const { createLiveFeedService } = require('./services/liveFeedService');
 
 const authRoutes = require('./routes/auth');
 const watchlistRoutes = require('./routes/watchlists');
@@ -53,7 +54,9 @@ async function startServer(port = process.env.PORT || 4000) {
     console.warn('[server] Angel One credentials not configured; live market data will be unavailable until env vars are added.');
   }
 
-  return app.listen(port, () => console.log(`[server] LedgerView backend listening on :${port}`));
+  const httpServer = app.listen(port, () => console.log(`[server] LedgerView backend listening on :${port}`));
+  httpServer.liveFeed = createLiveFeedService(httpServer);
+  return httpServer;
 }
 
 if (require.main === module) {
