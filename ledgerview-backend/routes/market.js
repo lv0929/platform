@@ -7,15 +7,24 @@ const DEFAULT_WATCHLIST = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', '
 const FALLBACK_SYMBOLS = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'LTIM', 'ITC', 'SUNPHARMA', 'BHARTIARTL', 'AXISBANK', 'KOTAKBANK'];
 
 function normalizeIndexPayload(name, quote) {
-  const safe = quote && (quote.ltp !== undefined || quote.previousClose !== undefined || quote.close !== undefined) ? quote : { name, ltp: 0, previousClose: 0 };
-  const ltp = Number(safe.ltp ?? safe.lastPrice ?? safe.close ?? safe.price ?? 0);
-  const previousClose = Number(safe.previousClose ?? safe.close ?? safe.prevClose ?? safe.previous_close ?? ltp);
-  const open = Number(safe.open ?? safe.openPrice ?? ltp);
-  const high = Number(safe.high ?? ltp);
-  const low = Number(safe.low ?? ltp);
-  const volume = Number(safe.volume ?? safe.totalTradedVolume ?? 0);
+  const directQuote = quote && quote.raw ? quote : null;
+  const fallbackMeta = (directQuote && directQuote.raw && directQuote.raw.meta) || (quote && quote.meta) || null;
+  const fallbackQuote = (directQuote && directQuote.raw && directQuote.raw.quote) || (quote && quote.quote) || null;
+  const safe = directQuote && (directQuote.ltp !== undefined || directQuote.previousClose !== undefined || directQuote.close !== undefined)
+    ? directQuote
+    : (quote && (quote.ltp !== undefined || quote.previousClose !== undefined || quote.close !== undefined))
+      ? quote
+      : (fallbackMeta || fallbackQuote || { name, ltp: 0, previousClose: 0 });
+
+  const ltp = Number(safe.ltp ?? safe.lastPrice ?? safe.regularMarketPrice ?? safe.close ?? safe.price ?? fallbackMeta?.regularMarketPrice ?? 0);
+  const previousClose = Number(safe.previousClose ?? safe.close ?? safe.prevClose ?? safe.previous_close ?? fallbackMeta?.previousClose ?? ltp);
+  const open = Number(safe.open ?? safe.regularMarketOpen ?? safe.openPrice ?? fallbackMeta?.regularMarketOpen ?? ltp);
+  const high = Number(safe.high ?? safe.regularMarketDayHigh ?? fallbackMeta?.regularMarketDayHigh ?? ltp);
+  const low = Number(safe.low ?? safe.regularMarketDayLow ?? fallbackMeta?.regularMarketDayLow ?? ltp);
+  const volume = Number(safe.volume ?? safe.totalTradedVolume ?? safe.regularMarketVolume ?? fallbackMeta?.regularMarketVolume ?? 0);
   const change = Number((ltp - previousClose).toFixed(2));
   const percentChange = previousClose ? Number(((change / previousClose) * 100).toFixed(2)) : 0;
+
   return {
     name,
     symbol: name,
@@ -27,7 +36,7 @@ function normalizeIndexPayload(name, quote) {
     change,
     percentChange,
     volume,
-    source: safe.source || 'Angel One SmartAPI',
+    source: safe.source || directQuote?.source || quote?.source || 'Angel One SmartAPI',
   };
 }
 
@@ -178,7 +187,7 @@ async function fetchSnapshotData() {
   const indices = results.map((result, index) => {
     const name = names[index];
     if (result.status === 'fulfilled') {
-      return normalizeIndexPayload(name, result.value.raw || result.value);
+      return normalizeIndexPayload(name, result.value);
     }
     return { name, symbol: name, ltp: 0, previousClose: 0, change: 0, percentChange: 0, source: 'LedgerView Backend' };
   });
@@ -268,7 +277,7 @@ router.get('/indices', async (req, res) => {
     results.forEach((r, i) => {
       const name = names[i];
       if (r.status === 'fulfilled') {
-        out[name] = normalizeIndexPayload(name, r.value.raw || r.value);
+        out[name] = normalizeIndexPayload(name, r.value);
       } else {
         out[name] = { name, error: r.reason.message, source: 'Angel One SmartAPI' };
       }

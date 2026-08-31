@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const { normalizeChartSymbol, mapCandleInterval, normalizeQuote, getStockDetail } = require('../services/angelOneService');
+const { normalizeChartSymbol, mapCandleInterval, normalizeQuote, getStockDetail, getIndexQuote } = require('../services/angelOneService');
 
 process.env.PORT = '4104';
 process.env.JWT_SECRET = 'test-secret';
@@ -115,6 +115,15 @@ test('real quote volume is preserved and stock detail exposes live metrics and C
   assert.ok(Object.prototype.hasOwnProperty.call(detail, 'casScore'));
 });
 
+test('fallback index quotes for SENSEX and India VIX resolve to non-zero live values', async () => {
+  const sensex = await getIndexQuote('SENSEX');
+  const vix = await getIndexQuote('India VIX');
+
+  assert.ok(Number(sensex.ltp) > 0, 'SENSEX ltp must be positive');
+  assert.ok(Number(sensex.previousClose) > 0, 'SENSEX previousClose must be positive');
+  assert.ok(Number(vix.ltp) > 0, 'India VIX ltp must be positive');
+  assert.ok(Number(vix.previousClose) > 0, 'India VIX previousClose must be positive');
+});
 test('GET /api/market/chart returns populated candles with the required fields for supported symbols', async () => {
   const server = app.listen(0);
   const port = server.address().port;
