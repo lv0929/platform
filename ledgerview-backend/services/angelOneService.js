@@ -15,11 +15,59 @@ const ROUTES = {
 };
 
 const INSTRUMENT_TOKENS = {
-  'NIFTY 50': { exchange: 'NSE', tradingsymbol: 'NIFTY', symboltoken: '99926000' },
-  'BANK NIFTY': { exchange: 'NSE', tradingsymbol: 'BANKNIFTY', symboltoken: '99926009' },
-  'India VIX': { exchange: 'NSE', tradingsymbol: 'INDIAVIX', symboltoken: '99926017' },
+  'NIFTY 50': { exchange: 'NSE', tradingsymbol: 'NIFTY', symboltoken: '26000' },
+  'BANK NIFTY': { exchange: 'NSE', tradingsymbol: 'BANKNIFTY', symboltoken: '26009' },
+  'India VIX': { exchange: 'NSE', tradingsymbol: 'INDIAVIX', symboltoken: '26017' },
   SENSEX: { exchange: 'BSE', tradingsymbol: 'SENSEX', symboltoken: '500010' },
+  NIFTY: { exchange: 'NSE', tradingsymbol: 'NIFTY', symboltoken: '26000' },
+  BANKNIFTY: { exchange: 'NSE', tradingsymbol: 'BANKNIFTY', symboltoken: '26009' },
+  RELIANCE: { exchange: 'NSE', tradingsymbol: 'RELIANCE-EQ', symboltoken: '2885' },
+  HDFCBANK: { exchange: 'NSE', tradingsymbol: 'HDFCBANK-EQ', symboltoken: '1335' },
+  ICICIBANK: { exchange: 'NSE', tradingsymbol: 'ICICIBANK-EQ', symboltoken: '4963' },
+  TCS: { exchange: 'NSE', tradingsymbol: 'TCS-EQ', symboltoken: '11536' },
 };
+
+function normalizeChartSymbol(symbol) {
+  const raw = String(symbol || '').trim();
+  if (!raw) return null;
+  const key = raw.toUpperCase().replace(/-EQ$/, '').replace(/\s+/g, ' ').trim();
+  const alias = INSTRUMENT_TOKENS[key];
+  if (alias) {
+    return {
+      symbol: key,
+      exchange: alias.exchange,
+      tradingsymbol: alias.tradingsymbol,
+      symboltoken: String(alias.symboltoken),
+      token: String(alias.symboltoken),
+    };
+  }
+
+  const normalizedKey = key === 'BANK NIFTY' ? 'BANKNIFTY' : key;
+  const fallback = INSTRUMENT_TOKENS[normalizedKey];
+  if (fallback) {
+    return {
+      symbol: normalizedKey,
+      exchange: fallback.exchange,
+      tradingsymbol: fallback.tradingsymbol,
+      symboltoken: String(fallback.symboltoken),
+      token: String(fallback.symboltoken),
+    };
+  }
+
+  return null;
+}
+
+function mapCandleInterval(range) {
+  const normalized = String(range || '1M').trim().toUpperCase();
+  const mapping = {
+    '1D': 'ONE_MINUTE',
+    '1W': 'ONE_HOUR',
+    '1M': 'ONE_DAY',
+    '3M': 'ONE_DAY',
+    '1Y': 'ONE_DAY',
+  };
+  return mapping[normalized] || 'ONE_DAY';
+}
 
 const INSTRUMENT_MASTER_URL = 'https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json';
 
@@ -250,28 +298,52 @@ async function getGainersLosers(symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK'
 }
 
 async function getChartSeries(symbol, range = '1M') {
-  const normalized = String(symbol || '').toUpperCase();
+  const normalized = String(symbol || '').trim().toUpperCase();
+  const aliasInstrument = normalizeChartSymbol(normalized);
   const universe = await loadInstrumentMaster();
-  const instrument = INSTRUMENT_TOKENS[normalized] || findInstrument(universe, normalized);
-  if (!instrument) throw new Error(`Symbol "${normalized}" not found in instrument master`);
-  const intervals = { '1D': 'TEN_MINUTE', '1W': 'ONE_HOUR', '1M': 'ONE_DAY', '3M': 'ONE_DAY', '1Y': 'ONE_DAY' };
+  const instrument = aliasInstrument || findInstrument(universe, normalized);
+
+  if (!instrument) {
+    throw new Error(`Symbol "${normalized}" not found in instrument master`);
+  }
+
+  const interval = mapCandleInterval(range);
   const days = { '1D': 1, '1W': 7, '1M': 31, '3M': 93, '1Y': 365 };
   const end = new Date();
-  const start = new Date(end.getTime() - (days[range] || 31) * 86400000);
+  const start = new Date(end.getTime() - (days[String(range).trim().toUpperCase()] || 31) * 86400000);
   const format = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
   const sessionData = await ensureSession();
-  const { data } = await axios.post(ROOT_URL + ROUTES.candles, {
+
+  const requestBody = {
     exchange: instrument.exchange,
-    symboltoken: instrument.symboltoken || instrument.token,
-    interval: intervals[range] || 'ONE_DAY',
+    symboltoken: String(instrument.symboltoken || instrument.token),
+    interval,
     fromdate: format(start),
     todate: format(end),
-  }, { headers: { ...baseHeaders(), Authorization: `Bearer ${sessionData.jwtToken}` }, timeout: 15000 });
-  if (!data || data.status !== true || !Array.isArray(data.data)) throw new Error((data && data.message) || 'Historical chart data unavailable');
+  };
+
+  const { data } = await axios.post(ROOT_URL + ROUTES.candles, requestBody, {
+    headers: { ...baseHeaders(), Authorization: `Bearer ${sessionData.jwtToken}` },
+    timeout: 15000,
+  });
+
+  if (!data || data.status !== true || !Array.isArray(data.data)) {
+    throw new Error((data && data.message) || 'Historical chart data unavailable');
+  }
+
   return {
     symbol: normalized,
+    exchange: instrument.exchange,
     range,
-    points: data.data.map(row => ({ label: row[0], open: Number(row[1]), high: Number(row[2]), low: Number(row[3]), value: Number(row[4]), volume: Number(row[5] || 0) })),
+    interval,
+    points: data.data.map((row) => ({
+      label: row[0],
+      open: Number(row[1]),
+      high: Number(row[2]),
+      low: Number(row[3]),
+      value: Number(row[4]),
+      volume: Number(row[5] || 0),
+    })),
   };
 }
 
@@ -289,5 +361,7 @@ module.exports = {
   getChartSeries,
   loadInstrumentMaster,
   INSTRUMENT_TOKENS,
+  normalizeChartSymbol,
+  mapCandleInterval,
   normalizeQuote,
 };
