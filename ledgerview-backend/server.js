@@ -24,6 +24,27 @@ app.use(
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'ledgerview-backend' }));
 
+app.get('/api/debug/chart-provider', (req, res) => {
+  const expectedKeys = ['ANGEL_API_KEY', 'ANGEL_CLIENT_CODE', 'ANGEL_MPIN', 'ANGEL_TOTP_SECRET'];
+  const aliasKeys = ['ANGELONE_API_KEY', 'ANGELONE_CLIENT_CODE', 'ANGELONE_MPIN', 'ANGELONE_TOTP_SECRET'];
+  const environmentStatus = expectedKeys.reduce((acc, key, index) => {
+    const alias = aliasKeys[index];
+    acc[key] = {
+      present: Boolean(process.env[key]),
+      aliasPresent: Boolean(process.env[alias]),
+      aliasKey: alias,
+    };
+    return acc;
+  }, {});
+
+  res.json({
+    activeProvider: process.env.ANGEL_CLIENT_CODE || process.env.ANGELONE_CLIENT_CODE ? 'Angel One' : 'Unavailable',
+    fallbackProvider: 'Yahoo Finance',
+    environmentStatus,
+    chartProviderInitialized: true,
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/watchlists', watchlistRoutes);
 app.use('/api/market', marketRoutes);
@@ -53,6 +74,8 @@ async function startServer(port = process.env.PORT || 4000) {
   } else {
     console.warn('[server] Angel One credentials not configured; live market data will be unavailable until env vars are added.');
   }
+
+  console.log('[server] Chart Provider Initialized');
 
   const httpServer = app.listen(port, () => console.log(`[server] LedgerView backend listening on :${port}`));
   httpServer.liveFeed = createLiveFeedService(httpServer);

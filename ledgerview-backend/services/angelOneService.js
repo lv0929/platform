@@ -609,6 +609,7 @@ async function fetchChartSeriesUncached(symbol, range = '1M') {
     const ticker = SECONDARY_CHART_TICKERS[normalized];
     if (!ticker) throw error;
     console.warn(`[chart] Fallback Activated for ${normalized}_${range}`);
+    console.info(`[chart] Yahoo fallback invoked for ${normalized}_${range} ticker=${ticker}`);
 
     const normalizedRange = String(range).trim().toUpperCase();
     const yahooInterval = { '1D': '5m', '1W': '1h', '1M': '1d', '3M': '1d', '1Y': '1d' }[normalizedRange] || '1d';
@@ -625,10 +626,13 @@ async function fetchChartSeriesUncached(symbol, range = '1M') {
         const { data } = await axios.get(yahooUrl, { timeout: 15000 });
         const result = data?.chart?.result?.[0];
         const quote = result?.indicators?.quote?.[0];
+        const candles = Array.isArray(result?.timestamp) ? result.timestamp.length : 0;
+        console.info(`[chart] Yahoo candles returned for ${normalized}_${range} count=${candles} from=${yahooUrl}`);
         const points = result?.timestamp?.map((timestamp, index) => normalizeChartPoint(
           new Date(timestamp * 1000).toISOString().slice(0, 19).replace('T', ' '),
           quote?.open?.[index], quote?.high?.[index], quote?.low?.[index], quote?.close?.[index], quote?.volume?.[index]
         )).filter(Boolean) || [];
+        console.info(`[chart] Points generated for ${normalized}_${range}: ${points.length}`);
         if (points.length) {
           console.info(`[chart] Fallback chart success ${normalized}_${range} points=${points.length}`);
           return { symbol: normalized, exchange: instrument.exchange, range, interval, points };
