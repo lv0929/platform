@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEBI Compliance — LedgerView</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .page-shell { padding-top: 48px; }
+      .compliance-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        margin-top: 32px;
+      }
+      .compliance-card,
+      .timeline-item,
+      .faq-item {
+        background: rgba(16, 26, 49, 0.82);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 24px;
+        box-shadow: 0 18px 40px rgba(1, 4, 14, 0.28);
+      }
+      .timeline {
+        display: grid;
+        gap: 16px;
+        margin-top: 32px;
+      }
+      .timeline-item {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+      .timeline-item strong {
+        display: block;
+        font-size: 0.8rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted-2);
+      }
+      .link-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+      }
+      .link-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.02);
+        padding: 10px 16px;
+      }
+      .contact-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+      }
+      .contact-box {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 16px;
+      }
+      @media (max-width: 820px) {
+        .compliance-grid,
+        .contact-row,
+        .timeline-item {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container navbar">
+        <a href="index.html" class="brand"><span class="brand-mark">L</span><span>LedgerView</span></a>
+        <nav class="navlinks" aria-label="Main navigation">
+          <a href="index.html">Home</a>
+          <a href="index.html#markets">Markets</a>
+          <a href="index.html#research">Research</a>
+          <a href="index.html#features">Features</a>
+          <a href="index.html#pricing">Pricing</a>
+          <a href="about.html">About</a>
+          <a href="help.html">Help</a>
+          <a href="sebi.html">SEBI</a>
+        </nav>
+        <div class="nav-actions">
+          <a class="btn btn-secondary" href="login.html">Login</a>
+          <a class="btn btn-primary" href="login.html">Get Started</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <div class="container">
+        <span class="eyebrow">SEBI Compliance</span>
+        <h1>Institutional-grade investor protection and regulatory transparency.</h1>
+        <p class="lead">LedgerView is structured to provide market intelligence, analytics, and research support while maintaining clear disclosures and responsible communication with investors.</p>
+
+        <div class="compliance-grid">
+          <article class="compliance-card">
+            <h3>SEBI Risk Disclosure</h3>
+            <p>Investments in securities markets are subject to market risks. Read all related documents carefully before investing.</p>
+          </article>
+          <article class="compliance-card">
+            <h3>Platform Disclaimer</h3>
+            <p>LedgerView is a market intelligence and analytics platform.</p>
+            <p>LedgerView does not execute trades.</p>
+            <p>LedgerView does not manage investments.</p>
+            <p>LedgerView does not provide registered investment advice.</p>
+            <p>LedgerView does not guarantee returns.</p>
+          </article>
+
+          <article class="compliance-card">
+            <h3>Investor Charter</h3>
+            <ul>
+              <li><strong>Investor Rights:</strong> Access to clear disclosures, dispute handling, and transparent products.</li>
+              <li><strong>Investor Responsibilities:</strong> Assess risk, review documentation, and make decisions using complete information.</li>
+              <li><strong>Transparency Principles:</strong> Clear disclosures, data context, and responsible communication.</li>
+              <li><strong>Risk Awareness:</strong> Market movements can be volatile and investors should evaluate suitability before participation.</li>
+            </ul>
+          </article>
+
+          <article class="compliance-card">
+            <h3>Grievance Redressal</h3>
+            <div class="contact-row">
+              <div class="contact-box">
+                <div class="metric-label">Compliance Contact</div>
+                <div class="metric-value" style="font-size:1.1rem; margin-top:8px;">compliance@ledgerview.in</div>
+              </div>
+              <div class="contact-box">
+                <div class="metric-label">Support Contact</div>
+                <div class="metric-value" style="font-size:1.1rem; margin-top:8px;">support@ledgerview.in</div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="compliance-card" style="margin-top: 24px;">
+          <h3>Compliance Links</h3>
+          <div class="link-list">
+            <span class="link-pill">SEBI Guidelines</span>
+            <span class="link-pill">Investor Charter</span>
+            <span class="link-pill">Risk Disclosure</span>
+            <span class="link-pill">Privacy Policy</span>
+            <span class="link-pill">Terms of Use</span>
+            <span class="link-pill">Grievance Redressal</span>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-item">
+            <div><strong>Complaint Submission</strong></div>
+            <div>Investors may submit concerns through the compliance or support channels listed above, including a clear description of the issue.</div>
+          </div>
+          <div class="timeline-item">
+            <div><strong>Review Process</strong></div>
+            <div>Each complaint is documented, assessed for risk and relevance, and routed to the appropriate internal team for review.</div>
+          </div>
+          <div class="timeline-item">
+            <div><strong>Resolution Workflow</strong></div>
+            <div>Review outcomes are shared with the complainant in a structured, time-bound manner wherever appropriate.</div>
+          </div>
+          <div class="timeline-item">
+            <div><strong>Escalation Procedure</strong></div>
+            <div>For unresolved or sensitive matters, the issue may be escalated to senior compliance oversight for formal review.</div>
+          </div>
+        </div>
+
+        <div class="faq-grid" style="margin-top: 32px;">
+          <article class="faq-item">
+            <h3>Regulatory Questions</h3>
+            <p>LedgerView is designed to provide informational intelligence and analytics and is not positioned as a registered investment adviser or broker execution platform.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Investor Protection Questions</h3>
+            <p>We maintain transparency and disclosure practices to help investors understand product scope, responsibilities, and risk limitations.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Risk Questions</h3>
+            <p>All investments involve risk. Users should review investment suitability independently and read all disclosures carefully before acting.</p>
+          </article>
+          <article class="faq-item">
+            <h3>Access & Follow-up</h3>
+            <p>For support or regulatory concerns, contact support@ledgerview.in or compliance@ledgerview.in.</p>
+          </article>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-content">
+        <div class="footer-links">
+          <a href="index.html">Home</a>
+          <a href="about.html">About</a>
+          <a href="help.html">Help</a>
+          <a href="contact.html">Contact</a>
+          <a href="sebi.html">SEBI</a>
+          <a href="login.html">Login</a>
+        </div>
+        <div class="social-links">
+          <a href="mailto:hello@ledgerview.ai">hello@ledgerview.ai</a>
+          <a href="mailto:compliance@ledgerview.in">compliance@ledgerview.in</a>
+        </div>
+      </div>
+      <div class="container" style="margin-top: 12px; color: var(--muted); line-height:1.7;">
+        Investments in securities markets are subject to market risks. Read all related documents carefully before investing.
+        <br />
+        LedgerView is a market intelligence platform and does not execute trades or provide registered investment advice.
+      </div>
+    </footer>
+  </body>
+</html>
